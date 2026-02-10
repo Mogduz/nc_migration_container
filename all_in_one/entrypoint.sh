@@ -105,33 +105,34 @@ for i in $(seq 1 30); do
   fi
 done
 
+log "Configuring root user and creating database/user"
+if [ -n "$MYSQL_ROOT_PASSWORD" ]; then
+  "${MYSQL_CMD[@]}" --force -e "ALTER USER 'root'@'localhost' IDENTIFIED BY '${MYSQL_ROOT_PASSWORD}'; FLUSH PRIVILEGES;"
+fi
+USER_DB="${MYSQL_DATABASE}"
+"${MYSQL_CMD[@]}" --force -e "CREATE DATABASE IF NOT EXISTS \`${USER_DB}\` CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci;"
+"${MYSQL_CMD[@]}" --force -e "CREATE USER IF NOT EXISTS '${MYSQL_USER}'@'%' IDENTIFIED BY '${MYSQL_PASSWORD}'; CREATE USER IF NOT EXISTS '${MYSQL_USER}'@'localhost' IDENTIFIED BY '${MYSQL_PASSWORD}'; GRANT ALL PRIVILEGES ON \`${USER_DB}\`.* TO '${MYSQL_USER}'@'%'; GRANT ALL PRIVILEGES ON \`${USER_DB}\`.* TO '${MYSQL_USER}'@'localhost'; FLUSH PRIVILEGES;"
+
 log "Checking for SQL dumps in /mnt/mysql"
 shopt -s nullglob
 for dump in /mnt/mysql/*.sql /mnt/mysql/*.sql.gz; do
   if [ -f "$dump" ]; then
     log "Importing dump: $dump"
-    DUMP_DB="${MYSQL_DUMP_DB:-}"
-    if [ -z "$DUMP_DB" ]; then
-      if [[ "$(basename "$dump")" == *owncloud* ]]; then
-        DUMP_DB="owncloud"
-      else
-        DUMP_DB="$MYSQL_DATABASE"
-      fi
-    fi
-    log "Ensuring database exists: $DUMP_DB"
-    "${MYSQL_CMD[@]}" --force -e "CREATE DATABASE IF NOT EXISTS \`$DUMP_DB\`"
+    DUMP_DB="${MYSQL_DUMP_DB:-$MYSQL_DATABASE}"
+    log "Using database: $DUMP_DB"
+    MYSQL_USER_CMD=(mysql --defaults-file=/dev/null -h"$MYSQL_HOST" -u"$MYSQL_USER" -p"$MYSQL_PASSWORD")
     if [[ "$dump" == *.gz ]] && gzip -t "$dump" >/dev/null 2>&1; then
       gzip -dc "$dump" | tr -d '\r' | sed -E \
         -e 's/^\\-\\-/--/' \
         -e 's/DEFINER[ ]*=[ ]*`[^`]+`@`[^`]+`//g' \
         -e 's/DEFINER[ ]*=[ ]*[^ ]+//g' \
-        | "${MYSQL_CMD[@]}" --binary-mode --force "$DUMP_DB"
+        | "${MYSQL_USER_CMD[@]}" --binary-mode --force "$DUMP_DB"
     else
       tr -d '\r' < "$dump" | sed -E \
         -e 's/^\\-\\-/--/' \
         -e 's/DEFINER[ ]*=[ ]*`[^`]+`@`[^`]+`//g' \
         -e 's/DEFINER[ ]*=[ ]*[^ ]+//g' \
-        | "${MYSQL_CMD[@]}" --binary-mode --force "$DUMP_DB"
+        | "${MYSQL_USER_CMD[@]}" --binary-mode --force "$DUMP_DB"
     fi
   fi
 done
