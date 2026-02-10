@@ -1,0 +1,21 @@
+version: "3.8"
+
+services:
+  all_in_one:
+    build: .
+    container_name: nc_migration_all_in_one
+    ports:
+      - "8080:80"
+      - "3306:3306"
+      - "6379:6379"
+    environment:
+      - NC_TRUSTED_DOMAINS=localhost
+      - MYSQL_DATABASE=nextcloud
+      - MYSQL_USER=nextcloud
+      - MYSQL_PASSWORD=nextcloud
+      - MYSQL_ROOT_PASSWORD=root
+    volumes:
+      - ./nextcloud_config:/mnt/NextCloud/config
+      - ./nextcloud_data:/mnt/NextCloud/data
+      - ./mysql:/mnt/mysql
+      - ./redis:/mnt/redis
