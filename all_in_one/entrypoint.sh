@@ -1,0 +1,111 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+NC_PATH="/var/www/html/nextcloud"
+NC_CONFIG_DIR="$NC_PATH/config"
+NC_SQLITE_DIR="/mnt/NextCloud/sqlite"
+
+log() {
+  echo "[entrypoint] $*"
+}
+
+# Defaults (can be overridden via env)
+: "${NC_ADMIN_USER:=admin}"
+: "${NC_ADMIN_PASSWORD:=admin}"
+: "${NC_TRUSTED_DOMAINS:=localhost}"
+: "${NC_DATA_DIR:=/mnt/NextCloud/data}"
+
+# MariaDB defaults
+: "${MYSQL_DATABASE:=nextcloud}"
+: "${MYSQL_USER:=nextcloud}"
+: "${MYSQL_PASSWORD:=nextcloud}"
+: "${MYSQL_ROOT_PASSWORD:=}"
+: "${MYSQL_HOST:=localhost}"
+
+log "Preparing data/config/sqlite directories"
+mkdir -p "$NC_DATA_DIR" "$NC_CONFIG_DIR" "$NC_SQLITE_DIR"
+chown -R www-data:www-data "$NC_CONFIG_DIR" "$NC_DATA_DIR" "$NC_SQLITE_DIR"
+
+log "Configuring Apache for Nextcloud"
+sed -i 's#DocumentRoot /var/www/html#DocumentRoot /var/www/html/nextcloud#' /etc/apache2/sites-available/000-default.conf
+cat > /etc/apache2/conf-available/nextcloud.conf <<'CONF'
+<Directory /var/www/html/nextcloud>
+  Require all granted
+  AllowOverride All
+  Options FollowSymLinks MultiViews
+</Directory>
+CONF
+cat > /etc/apache2/conf-available/nextcloud-redirect.conf <<'CONF'
+RedirectMatch 302 ^/nextcloud/?$ /
+CONF
+a2enconf nextcloud >/dev/null
+a2enconf nextcloud-redirect >/dev/null
+
+if [ -d "/mnt/redis" ]; then
+  log "Configuring Redis to use /mnt/redis as data dir"
+  mkdir -p /mnt/redis
+  chown -R redis:redis /mnt/redis
+  if grep -q '^dir ' /etc/redis/redis.conf; then
+    sed -i 's#^dir .*#dir /mnt/redis#' /etc/redis/redis.conf
+  else
+    printf '\ndir /mnt/redis\n' >> /etc/redis/redis.conf
+  fi
+  REDIS_RDB_FILE=""
+  for f in /mnt/redis/*.rdb; do
+    if [ -f "$f" ]; then
+      REDIS_RDB_FILE="$(basename "$f")"
+      break
+    fi
+  done
+  if [ -z "$REDIS_RDB_FILE" ]; then
+    REDIS_RDB_FILE="dump.rdb"
+  fi
+  if grep -q '^dbfilename ' /etc/redis/redis.conf; then
+    sed -i "s#^dbfilename .*#dbfilename ${REDIS_RDB_FILE}#" /etc/redis/redis.conf
+  else
+    printf 'dbfilename %s\n' "$REDIS_RDB_FILE" >> /etc/redis/redis.conf
+  fi
+else
+  log "/mnt/redis not mounted; using default Redis data dir"
+fi
+
+MYSQL_ADMIN_ARGS=(-h"$MYSQL_HOST" -uroot)
+MYSQL_ARGS=(-h"$MYSQL_HOST" -uroot)
+if [ -n "$MYSQL_ROOT_PASSWORD" ]; then
+  MYSQL_ADMIN_ARGS+=(-p"$MYSQL_ROOT_PASSWORD")
+  MYSQL_ARGS+=(-p"$MYSQL_ROOT_PASSWORD")
+fi
+
+log "Starting MariaDB for installation"
+mysqld_safe --datadir=/var/lib/mysql >/var/log/mysqld_safe.log 2>&1 &
+
+log "Waiting for MariaDB to accept connections"
+for i in $(seq 1 30); do
+  if mysqladmin "${MYSQL_ADMIN_ARGS[@]}" ping --silent; then
+    break
+  fi
+  sleep 1
+  if [ "$i" -eq 30 ]; then
+    log "ERROR: MariaDB not ready"
+    exit 1
+  fi
+done
+
+log "Checking for SQL dumps in /mnt/mysql"
+shopt -s nullglob
+for dump in /mnt/mysql/*.sql /mnt/mysql/*.sql.gz; do
+  if [ -f "$dump" ]; then
+    log "Importing dump: $dump"
+    if [[ "$dump" == *.gz ]]; then
+      gzip -dc "$dump" | mysql -h"$MYSQL_HOST" -u"$MYSQL_USER" -p"$MYSQL_PASSWORD" "$MYSQL_DATABASE"
+    else
+      mysql -h"$MYSQL_HOST" -u"$MYSQL_USER" -p"$MYSQL_PASSWORD" "$MYSQL_DATABASE" < "$dump"
+    fi
+  fi
+done
+shopt -u nullglob
+
+log "Shutting down MariaDB after import"
+mysqladmin "${MYSQL_ADMIN_ARGS[@]}" shutdown
+
+exec "$@"
