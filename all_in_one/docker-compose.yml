@@ -16,6 +16,8 @@ services:
       - MYSQL_ROOT_PASSWORD=root
     volumes:
       - ./nextcloud_config:/mnt/NextCloud/config
-      - ./nextcloud_data:/mnt/NextCloud/data
+      - ./nextcloud_apps:/mnt/NextCloud/apps
+      - ./nextcloud_files:/mnt/NextCloud/files
+      - ./nextcloud_sessions:/mnt/NextCloud/sessions
       - ./mysql:/mnt/mysql
       - ./redis:/mnt/redis
