@@ -110,16 +110,26 @@ shopt -s nullglob
 for dump in /mnt/mysql/*.sql /mnt/mysql/*.sql.gz; do
   if [ -f "$dump" ]; then
     log "Importing dump: $dump"
+    DUMP_DB="${MYSQL_DUMP_DB:-}"
+    if [ -z "$DUMP_DB" ]; then
+      if [[ "$(basename "$dump")" == *owncloud* ]]; then
+        DUMP_DB="owncloud"
+      else
+        DUMP_DB="$MYSQL_DATABASE"
+      fi
+    fi
+    log "Ensuring database exists: $DUMP_DB"
+    "${MYSQL_CMD[@]}" --force -e "CREATE DATABASE IF NOT EXISTS \`$DUMP_DB\`"
     if [[ "$dump" == *.gz ]]; then
       gzip -dc "$dump" | sed -E \
         -e 's/DEFINER[ ]*=[ ]*`[^`]+`@`[^`]+`//g' \
         -e 's/DEFINER[ ]*=[ ]*[^ ]+//g' \
-        | "${MYSQL_CMD[@]}" --force "$MYSQL_DATABASE"
+        | "${MYSQL_CMD[@]}" --force "$DUMP_DB"
     else
       sed -E \
         -e 's/DEFINER[ ]*=[ ]*`[^`]+`@`[^`]+`//g' \
         -e 's/DEFINER[ ]*=[ ]*[^ ]+//g' \
-        < "$dump" | "${MYSQL_CMD[@]}" --force "$MYSQL_DATABASE"
+        < "$dump" | "${MYSQL_CMD[@]}" --force "$DUMP_DB"
     fi
   fi
 done
