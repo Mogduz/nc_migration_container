@@ -120,16 +120,18 @@ for dump in /mnt/mysql/*.sql /mnt/mysql/*.sql.gz; do
     fi
     log "Ensuring database exists: $DUMP_DB"
     "${MYSQL_CMD[@]}" --force -e "CREATE DATABASE IF NOT EXISTS \`$DUMP_DB\`"
-    if [[ "$dump" == *.gz ]]; then
-      gzip -dc "$dump" | sed -E \
+    if [[ "$dump" == *.gz ]] && gzip -t "$dump" >/dev/null 2>&1; then
+      gzip -dc "$dump" | tr -d '\r' | sed -E \
+        -e 's/^\\-\\-/--/' \
         -e 's/DEFINER[ ]*=[ ]*`[^`]+`@`[^`]+`//g' \
         -e 's/DEFINER[ ]*=[ ]*[^ ]+//g' \
         | "${MYSQL_CMD[@]}" --binary-mode --force "$DUMP_DB"
     else
-      sed -E \
+      tr -d '\r' < "$dump" | sed -E \
+        -e 's/^\\-\\-/--/' \
         -e 's/DEFINER[ ]*=[ ]*`[^`]+`@`[^`]+`//g' \
         -e 's/DEFINER[ ]*=[ ]*[^ ]+//g' \
-        < "$dump" | "${MYSQL_CMD[@]}" --binary-mode --force "$DUMP_DB"
+        | "${MYSQL_CMD[@]}" --binary-mode --force "$DUMP_DB"
     fi
   fi
 done
