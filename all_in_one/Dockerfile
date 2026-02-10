@@ -1,0 +1,75 @@
+# Base image
+FROM ubuntu:20.04
+
+ENV DEBIAN_FRONTEND=noninteractive
+
+# Install system dependencies + services
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    ca-certificates \
+    curl \
+    apache2 \
+    libapache2-mod-php7.4 \
+    php7.4-cli \
+    php7.4-common \
+    php7.4-ctype \
+    php7.4-curl \
+    php7.4-dom \
+    php7.4-fileinfo \
+    php7.4-gd \
+    php7.4-json \
+    php7.4-mbstring \
+    php7.4-xml \
+    php7.4-zip \
+    php7.4-opcache \
+    php7.4-pdo \
+    php7.4-mysql \
+    php7.4-pgsql \
+    php7.4-sqlite3 \
+    php7.4-bz2 \
+    php7.4-intl \
+    libxml2 \
+    zlib1g \
+    bzip2 \
+    unzip \
+    mariadb-server \
+    redis-server \
+    supervisor \
+    && rm -rf /var/lib/apt/lists/*
+
+# Enable Apache modules required by Nextcloud
+RUN a2enmod rewrite headers env dir mime
+
+# Download and install Nextcloud 25 at build time (fixed version)
+ARG NC_VERSION=25.0.0
+ENV NC_VERSION=${NC_VERSION}
+RUN set -eux; \
+    curl -fsSLO "https://download.nextcloud.com/server/releases/nextcloud-${NC_VERSION}.tar.bz2"; \
+    curl -fsSLO "https://download.nextcloud.com/server/releases/nextcloud-${NC_VERSION}.tar.bz2.sha256"; \
+    sha256sum -c "nextcloud-${NC_VERSION}.tar.bz2.sha256"; \
+    tar -xjf "nextcloud-${NC_VERSION}.tar.bz2" -C /var/www/html/; \
+    mkdir -p /var/www/html/nextcloud/data; \
+    chown -R www-data:www-data /var/www/html/nextcloud; \
+    rm -f "nextcloud-${NC_VERSION}.tar.bz2" "nextcloud-${NC_VERSION}.tar.bz2.sha256"
+
+# Move initial config to external path and symlink it
+RUN set -eux; \
+    mkdir -p /mnt/NextCloud/config; \
+    cp -a /var/www/html/nextcloud/config/. /mnt/NextCloud/config/; \
+    rm -rf /var/www/html/nextcloud/config; \
+    ln -s /mnt/NextCloud/config /var/www/html/nextcloud/config
+
+# Entrypoint for initialization
+COPY entrypoint.sh /entrypoint.sh
+RUN chmod +x /entrypoint.sh \
+    && printf '%s\n' '#!/usr/bin/env bash' 'exec php /var/www/html/nextcloud/occ "$@"' > /usr/local/bin/occ \
+    && chmod +x /usr/local/bin/occ
+
+# Supervisor configuration
+COPY supervisor.conf /etc/supervisor/conf.d/supervisor.conf
+
+EXPOSE 80 3306 6379
+
+WORKDIR /app
+
+ENTRYPOINT ["/entrypoint.sh"]
+CMD ["/usr/bin/supervisord", "-n", "-c", "/etc/supervisor/supervisord.conf"]
