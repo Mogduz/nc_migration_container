@@ -1,0 +1,46 @@
+version: "3.8"
+
+services:
+  app:
+    build: .
+    container_name: nc_migration_container
+    ports:
+      - "8080:80"
+    depends_on:
+      - db
+      - redis
+    environment:
+      - NC_AUTO_INSTALL=0
+      - NC_ADMIN_USER=admin
+      - NC_ADMIN_PASSWORD=admin
+      - NC_TRUSTED_DOMAINS=localhost
+      - NC_DATA_DIR=/mnt/NextCloud/data
+      - MYSQL_HOST=db
+      - MYSQL_DATABASE=nextcloud
+      - MYSQL_USER=nextcloud
+      - MYSQL_PASSWORD=nextcloud
+      - REDIS_HOST=redis
+    volumes:
+      - ./nextcloud_config:/mnt/NextCloud/config
+      - ./nextcloud_data:/mnt/NextCloud/data
+
+  db:
+    image: mariadb:10.11
+    container_name: nc_migration_db
+    command: --transaction-isolation=READ-COMMITTED --binlog-format=ROW
+    restart: unless-stopped
+    environment:
+      - MYSQL_ROOT_PASSWORD=root
+      - MYSQL_DATABASE=nextcloud
+      - MYSQL_USER=nextcloud
+      - MYSQL_PASSWORD=nextcloud
+    volumes:
+      - db_data:/var/lib/mysql
+
+  redis:
+    image: redis:7-alpine
+    container_name: nc_migration_redis
+    restart: unless-stopped
+
+volumes:
+  db_data:
