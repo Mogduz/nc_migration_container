@@ -83,11 +83,11 @@ else
   log "/mnt/redis not mounted; using default Redis data dir"
 fi
 
-MYSQL_ADMIN_ARGS=(-h"$MYSQL_HOST" -uroot)
-MYSQL_ARGS=(-h"$MYSQL_HOST" -uroot)
+MYSQL_ADMIN_CMD=(mysqladmin --defaults-file=/dev/null -h"$MYSQL_HOST" -uroot)
+MYSQL_CMD=(mysql --defaults-file=/dev/null -h"$MYSQL_HOST" -uroot)
 if [ -n "$MYSQL_ROOT_PASSWORD" ]; then
-  MYSQL_ADMIN_ARGS+=(-p"$MYSQL_ROOT_PASSWORD")
-  MYSQL_ARGS+=(-p"$MYSQL_ROOT_PASSWORD")
+  MYSQL_ADMIN_CMD+=(-p"$MYSQL_ROOT_PASSWORD")
+  MYSQL_CMD+=(-p"$MYSQL_ROOT_PASSWORD")
 fi
 
 log "Starting MariaDB for installation"
@@ -95,7 +95,7 @@ mysqld_safe --datadir=/var/lib/mysql >/var/log/mysqld_safe.log 2>&1 &
 
 log "Waiting for MariaDB to accept connections"
 for i in $(seq 1 30); do
-  if mysqladmin "${MYSQL_ADMIN_ARGS[@]}" ping --silent; then
+  if "${MYSQL_ADMIN_CMD[@]}" ping --silent; then
     break
   fi
   sleep 1
@@ -114,18 +114,18 @@ for dump in /mnt/mysql/*.sql /mnt/mysql/*.sql.gz; do
       gzip -dc "$dump" | sed -E \
         -e 's/DEFINER[ ]*=[ ]*`[^`]+`@`[^`]+`//g' \
         -e 's/DEFINER[ ]*=[ ]*[^ ]+//g' \
-        | mysql "${MYSQL_ADMIN_ARGS[@]}" --force "$MYSQL_DATABASE"
+        | "${MYSQL_CMD[@]}" --force "$MYSQL_DATABASE"
     else
       sed -E \
         -e 's/DEFINER[ ]*=[ ]*`[^`]+`@`[^`]+`//g' \
         -e 's/DEFINER[ ]*=[ ]*[^ ]+//g' \
-        < "$dump" | mysql "${MYSQL_ADMIN_ARGS[@]}" --force "$MYSQL_DATABASE"
+        < "$dump" | "${MYSQL_CMD[@]}" --force "$MYSQL_DATABASE"
     fi
   fi
 done
 shopt -u nullglob
 
 log "Shutting down MariaDB after import"
-mysqladmin "${MYSQL_ADMIN_ARGS[@]}" shutdown
+"${MYSQL_ADMIN_CMD[@]}" shutdown
 
 exec "$@"
