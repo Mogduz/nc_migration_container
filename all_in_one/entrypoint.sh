@@ -55,6 +55,13 @@ CONF
 a2enconf nextcloud >/dev/null
 a2enconf nextcloud-redirect >/dev/null
 
+log "Restricting MariaDB to localhost"
+if grep -q '^bind-address' /etc/mysql/mariadb.conf.d/50-server.cnf; then
+  sed -i 's/^bind-address.*/bind-address = 127.0.0.1/' /etc/mysql/mariadb.conf.d/50-server.cnf
+else
+  printf '\nbind-address = 127.0.0.1\n' >> /etc/mysql/mariadb.conf.d/50-server.cnf
+fi
+
 if [ -d "/mnt/redis" ]; then
   log "Configuring Redis to use /mnt/redis as data dir"
   mkdir -p /mnt/redis
@@ -111,7 +118,7 @@ if [ -n "$MYSQL_ROOT_PASSWORD" ]; then
 fi
 USER_DB="${MYSQL_DATABASE}"
 "${MYSQL_CMD[@]}" --force -e "CREATE DATABASE IF NOT EXISTS \`${USER_DB}\` CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci;"
-"${MYSQL_CMD[@]}" --force -e "CREATE USER IF NOT EXISTS '${MYSQL_USER}'@'%' IDENTIFIED BY '${MYSQL_PASSWORD}'; CREATE USER IF NOT EXISTS '${MYSQL_USER}'@'localhost' IDENTIFIED BY '${MYSQL_PASSWORD}'; GRANT ALL PRIVILEGES ON \`${USER_DB}\`.* TO '${MYSQL_USER}'@'%'; GRANT ALL PRIVILEGES ON \`${USER_DB}\`.* TO '${MYSQL_USER}'@'localhost'; FLUSH PRIVILEGES;"
+"${MYSQL_CMD[@]}" --force -e "CREATE USER IF NOT EXISTS '${MYSQL_USER}'@'localhost' IDENTIFIED BY '${MYSQL_PASSWORD}'; GRANT ALL PRIVILEGES ON \`${USER_DB}\`.* TO '${MYSQL_USER}'@'localhost'; FLUSH PRIVILEGES;"
 
 log "Checking for SQL dumps in /mnt/mysql"
 shopt -s nullglob
@@ -123,12 +130,14 @@ for dump in /mnt/mysql/*.sql /mnt/mysql/*.sql.gz; do
     MYSQL_USER_CMD=(mysql --defaults-file=/dev/null -h"$MYSQL_HOST" -u"$MYSQL_USER" -p"$MYSQL_PASSWORD")
     if [[ "$dump" == *.gz ]] && gzip -t "$dump" >/dev/null 2>&1; then
       gzip -dc "$dump" | tr -d '\r' | sed -E \
+        -e '/^\\\/d' \
         -e 's/^\\-\\-/--/' \
         -e 's/DEFINER[ ]*=[ ]*`[^`]+`@`[^`]+`//g' \
         -e 's/DEFINER[ ]*=[ ]*[^ ]+//g' \
         | "${MYSQL_USER_CMD[@]}" --binary-mode --force "$DUMP_DB"
     else
       tr -d '\r' < "$dump" | sed -E \
+        -e '/^\\\/d' \
         -e 's/^\\-\\-/--/' \
         -e 's/DEFINER[ ]*=[ ]*`[^`]+`@`[^`]+`//g' \
         -e 's/DEFINER[ ]*=[ ]*[^ ]+//g' \
