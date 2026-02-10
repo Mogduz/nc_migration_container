@@ -111,9 +111,15 @@ for dump in /mnt/mysql/*.sql /mnt/mysql/*.sql.gz; do
   if [ -f "$dump" ]; then
     log "Importing dump: $dump"
     if [[ "$dump" == *.gz ]]; then
-      gzip -dc "$dump" | mysql -h"$MYSQL_HOST" -u"$MYSQL_USER" -p"$MYSQL_PASSWORD" "$MYSQL_DATABASE"
+      gzip -dc "$dump" | sed -E \
+        -e 's/DEFINER[ ]*=[ ]*`[^`]+`@`[^`]+`//g' \
+        -e 's/DEFINER[ ]*=[ ]*[^ ]+//g' \
+        | mysql "${MYSQL_ADMIN_ARGS[@]}" --force "$MYSQL_DATABASE"
     else
-      mysql -h"$MYSQL_HOST" -u"$MYSQL_USER" -p"$MYSQL_PASSWORD" "$MYSQL_DATABASE" < "$dump"
+      sed -E \
+        -e 's/DEFINER[ ]*=[ ]*`[^`]+`@`[^`]+`//g' \
+        -e 's/DEFINER[ ]*=[ ]*[^ ]+//g' \
+        < "$dump" | mysql "${MYSQL_ADMIN_ARGS[@]}" --force "$MYSQL_DATABASE"
     fi
   fi
 done
