@@ -124,12 +124,12 @@ for dump in /mnt/mysql/*.sql /mnt/mysql/*.sql.gz; do
       gzip -dc "$dump" | sed -E \
         -e 's/DEFINER[ ]*=[ ]*`[^`]+`@`[^`]+`//g' \
         -e 's/DEFINER[ ]*=[ ]*[^ ]+//g' \
-        | "${MYSQL_CMD[@]}" --force "$DUMP_DB"
+        | "${MYSQL_CMD[@]}" --binary-mode --force "$DUMP_DB"
     else
       sed -E \
         -e 's/DEFINER[ ]*=[ ]*`[^`]+`@`[^`]+`//g' \
         -e 's/DEFINER[ ]*=[ ]*[^ ]+//g' \
-        < "$dump" | "${MYSQL_CMD[@]}" --force "$DUMP_DB"
+        < "$dump" | "${MYSQL_CMD[@]}" --binary-mode --force "$DUMP_DB"
     fi
   fi
 done
