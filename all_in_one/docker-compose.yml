@@ -4,7 +4,6 @@ services:
     container_name: nc_migration_all_in_one
     ports:
       - "8080:80"
-      - "3306:3306"
       - "6379:6379"
     environment:
       - NC_TRUSTED_DOMAINS=localhost
