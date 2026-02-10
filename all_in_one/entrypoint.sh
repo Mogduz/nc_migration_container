@@ -4,6 +4,9 @@ set -euo pipefail
 NC_PATH="/var/www/html/nextcloud"
 NC_CONFIG_DIR="$NC_PATH/config"
 NC_SQLITE_DIR="/mnt/NextCloud/sqlite"
+NC_APPS_DIR="/mnt/NextCloud/apps"
+NC_FILES_DIR="/mnt/NextCloud/files"
+NC_SESSIONS_DIR="/mnt/NextCloud/sessions"
 
 log() {
   echo "[entrypoint] $*"
@@ -13,7 +16,7 @@ log() {
 : "${NC_ADMIN_USER:=admin}"
 : "${NC_ADMIN_PASSWORD:=admin}"
 : "${NC_TRUSTED_DOMAINS:=localhost}"
-: "${NC_DATA_DIR:=/mnt/NextCloud/data}"
+: "${NC_DATA_DIR:=${NC_FILES_DIR}}"
 
 # MariaDB defaults
 : "${MYSQL_DATABASE:=nextcloud}"
@@ -23,8 +26,19 @@ log() {
 : "${MYSQL_HOST:=localhost}"
 
 log "Preparing data/config/sqlite directories"
-mkdir -p "$NC_DATA_DIR" "$NC_CONFIG_DIR" "$NC_SQLITE_DIR"
-chown -R www-data:www-data "$NC_CONFIG_DIR" "$NC_DATA_DIR" "$NC_SQLITE_DIR"
+mkdir -p "$NC_DATA_DIR" "$NC_CONFIG_DIR" "$NC_SQLITE_DIR" "$NC_APPS_DIR" "$NC_FILES_DIR" "$NC_SESSIONS_DIR"
+chown -R www-data:www-data "$NC_CONFIG_DIR" "$NC_DATA_DIR" "$NC_SQLITE_DIR" "$NC_APPS_DIR" "$NC_FILES_DIR" "$NC_SESSIONS_DIR"
+
+log "Wiring apps, files, and sessions to mount points"
+if [ -d "/var/www/html/nextcloud/custom_apps" ] && [ ! -L "/var/www/html/nextcloud/custom_apps" ]; then
+  rm -rf /var/www/html/nextcloud/custom_apps
+fi
+ln -sfn "$NC_APPS_DIR" /var/www/html/nextcloud/custom_apps
+
+if [ -d "/var/lib/php/sessions" ] && [ ! -L "/var/lib/php/sessions" ]; then
+  rm -rf /var/lib/php/sessions
+fi
+ln -sfn "$NC_SESSIONS_DIR" /var/lib/php/sessions
 
 log "Configuring Apache for Nextcloud"
 sed -i 's#DocumentRoot /var/www/html#DocumentRoot /var/www/html/nextcloud#' /etc/apache2/sites-available/000-default.conf
