@@ -7,6 +7,7 @@ log() {
 
 for f in /entrypoint.d/*.sh; do
   if [ -f "$f" ]; then
+    log "Running $(basename "$f")"
     # shellcheck source=/dev/null
     . "$f"
   fi
