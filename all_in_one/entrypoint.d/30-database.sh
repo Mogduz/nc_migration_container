@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+log "Running 30-database.sh"
 log "Restricting MariaDB to localhost"
 if grep -q '^bind-address' /etc/mysql/mariadb.conf.d/50-server.cnf; then
   sed -i 's/^bind-address.*/bind-address = 127.0.0.1/' /etc/mysql/mariadb.conf.d/50-server.cnf
@@ -56,6 +57,12 @@ for dump in /mnt/mysql/*.sql /mnt/mysql/*.sql.gz; do
   fi
 done
 shopt -u nullglob
+
+if [ -n "${DUMP_DB:-}" ]; then
+  log "Listing tables in $DUMP_DB"
+  MYSQL_USER_CMD=(mysql --defaults-file=/dev/null -h"$MYSQL_HOST" -u"$MYSQL_USER" -p"$MYSQL_PASSWORD")
+  "${MYSQL_USER_CMD[@]}" --batch --raw -e "SHOW TABLES;" "$DUMP_DB" || true
+fi
 
 log "Shutting down MariaDB after import"
 "${MYSQL_ADMIN_CMD[@]}" shutdown
