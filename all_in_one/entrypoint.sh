@@ -130,14 +130,16 @@ for dump in /mnt/mysql/*.sql /mnt/mysql/*.sql.gz; do
     MYSQL_USER_CMD=(mysql --defaults-file=/dev/null -h"$MYSQL_HOST" -u"$MYSQL_USER" -p"$MYSQL_PASSWORD")
     if [[ "$dump" == *.gz ]] && gzip -t "$dump" >/dev/null 2>&1; then
       gzip -dc "$dump" | tr -d '\r' | sed -E \
-        -e 's/^\\\\/--/' \
+        -e '1s/^\xEF\xBB\xBF//' \
+        -e '1s/^\\\\+//' \
         -e 's/^\\-\\-/--/' \
         -e 's/DEFINER[ ]*=[ ]*`[^`]+`@`[^`]+`//g' \
         -e 's/DEFINER[ ]*=[ ]*[^ ]+//g' \
         | "${MYSQL_USER_CMD[@]}" --binary-mode --force "$DUMP_DB"
     else
       tr -d '\r' < "$dump" | sed -E \
-        -e 's/^\\\\/--/' \
+        -e '1s/^\xEF\xBB\xBF//' \
+        -e '1s/^\\\\+//' \
         -e 's/^\\-\\-/--/' \
         -e 's/DEFINER[ ]*=[ ]*`[^`]+`@`[^`]+`//g' \
         -e 's/DEFINER[ ]*=[ ]*[^ ]+//g' \
