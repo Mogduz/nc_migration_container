@@ -29,17 +29,6 @@ log "Preparing data/config/sqlite directories"
 mkdir -p "$NC_DATA_DIR" "$NC_CONFIG_DIR" "$NC_SQLITE_DIR" "$NC_APPS_DIR" "$NC_FILES_DIR" "$NC_SESSIONS_DIR"
 chown -R www-data:www-data "$NC_CONFIG_DIR" "$NC_DATA_DIR" "$NC_SQLITE_DIR" "$NC_APPS_DIR" "$NC_FILES_DIR" "$NC_SESSIONS_DIR"
 
-log "Wiring apps, files, and sessions to mount points"
-if [ -d "/var/www/html/nextcloud/custom_apps" ] && [ ! -L "/var/www/html/nextcloud/custom_apps" ]; then
-  rm -rf /var/www/html/nextcloud/custom_apps
-fi
-ln -sfn "$NC_APPS_DIR" /var/www/html/nextcloud/custom_apps
-
-if [ -d "/var/lib/php/sessions" ] && [ ! -L "/var/lib/php/sessions" ]; then
-  rm -rf /var/lib/php/sessions
-fi
-ln -sfn "$NC_SESSIONS_DIR" /var/lib/php/sessions
-
 log "Configuring Apache for Nextcloud"
 sed -i 's#DocumentRoot /var/www/html#DocumentRoot /var/www/html/nextcloud#' /etc/apache2/sites-available/000-default.conf
 cat > /etc/apache2/conf-available/nextcloud.conf <<'CONF'
@@ -131,13 +120,17 @@ for dump in /mnt/mysql/*.sql /mnt/mysql/*.sql.gz; do
     log "Using database: $DUMP_DB"
     MYSQL_USER_CMD=(mysql --defaults-file=/dev/null -h"$MYSQL_HOST" -u"$MYSQL_USER" -p"$MYSQL_PASSWORD")
     if [[ "$dump" == *.gz ]] && gzip -t "$dump" >/dev/null 2>&1; then
-      gzip -dc "$dump" | tr -d '\r' | awk 'NR==1{sub(/^\xEF\xBB\xBF/,""); gsub(/\\\\-/, "-")} {print}' | sed -E \
+      gzip -dc "$dump" | tr -d '\r' | sed -E \
+        -e 's/\\\\-/-/g' \
+        -e 's/^\\xEF\\xBB\\xBF//' \
         -e 's/^\\-\\-/--/' \
         -e 's/DEFINER[ ]*=[ ]*`[^`]+`@`[^`]+`//g' \
         -e 's/DEFINER[ ]*=[ ]*[^ ]+//g' \
         | "${MYSQL_USER_CMD[@]}" --binary-mode --force "$DUMP_DB"
     else
-      tr -d '\r' < "$dump" | awk 'NR==1{sub(/^\xEF\xBB\xBF/,""); gsub(/\\\\-/, "-")} {print}' | sed -E \
+      tr -d '\r' < "$dump" | sed -E \
+        -e 's/\\\\-/-/g' \
+        -e 's/^\\xEF\\xBB\\xBF//' \
         -e 's/^\\-\\-/--/' \
         -e 's/DEFINER[ ]*=[ ]*`[^`]+`@`[^`]+`//g' \
         -e 's/DEFINER[ ]*=[ ]*[^ ]+//g' \
