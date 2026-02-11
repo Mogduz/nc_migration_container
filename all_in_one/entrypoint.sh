@@ -132,6 +132,7 @@ for dump in /mnt/mysql/*.sql /mnt/mysql/*.sql.gz; do
       gzip -dc "$dump" | tr -d '\r' | sed -E \
         -e '1s/^\xEF\xBB\xBF//' \
         -e '1s/^\\\\+//' \
+        -e '1s/\\\\-/-/g' \
         -e 's/^\\-\\-/--/' \
         -e 's/DEFINER[ ]*=[ ]*`[^`]+`@`[^`]+`//g' \
         -e 's/DEFINER[ ]*=[ ]*[^ ]+//g' \
@@ -140,6 +141,7 @@ for dump in /mnt/mysql/*.sql /mnt/mysql/*.sql.gz; do
       tr -d '\r' < "$dump" | sed -E \
         -e '1s/^\xEF\xBB\xBF//' \
         -e '1s/^\\\\+//' \
+        -e '1s/\\\\-/-/g' \
         -e 's/^\\-\\-/--/' \
         -e 's/DEFINER[ ]*=[ ]*`[^`]+`@`[^`]+`//g' \
         -e 's/DEFINER[ ]*=[ ]*[^ ]+//g' \
