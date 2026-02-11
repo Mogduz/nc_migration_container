@@ -3,10 +3,10 @@ set -euo pipefail
 
 NC_PATH="/var/www/html/nextcloud"
 NC_CONFIG_DIR="$NC_PATH/config"
-NC_SQLITE_DIR="/mnt/NextCloud/sqlite"
-NC_APPS_DIR="/mnt/NextCloud/apps"
-NC_FILES_DIR="/mnt/NextCloud/files"
-NC_SESSIONS_DIR="/mnt/NextCloud/sessions"
+NC_SQLITE_DIR="$NC_PATH/sqlite"
+NC_APPS_DIR="$NC_PATH/custom"
+NC_FILES_DIR="$NC_PATH/data"
+NC_SESSIONS_DIR="/var/lib/php/sessions"
 
 log() {
   echo "[entrypoint] $*"
