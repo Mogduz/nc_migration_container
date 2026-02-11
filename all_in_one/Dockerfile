@@ -66,6 +66,8 @@ RUN chmod +x /entrypoint.sh \
 
 # Supervisor configuration
 COPY supervisor.conf /etc/supervisor/conf.d/supervisor.conf
+COPY healthcheck.sh /healthcheck.sh
+RUN chmod +x /healthcheck.sh
 
 EXPOSE 80 3306 6379
 
@@ -73,3 +75,5 @@ WORKDIR /app
 
 ENTRYPOINT ["/entrypoint.sh"]
 CMD ["/usr/bin/supervisord", "-n", "-c", "/etc/supervisor/supervisord.conf"]
+
+HEALTHCHECK --interval=10s --timeout=5s --start-period=120s --retries=3 CMD ["/healthcheck.sh"]
