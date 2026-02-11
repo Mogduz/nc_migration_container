@@ -1,6 +1,8 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+log "Running 00-env.sh"
+
 NC_PATH="/var/www/html/nextcloud"
 NC_CONFIG_DIR="$NC_PATH/config"
 NC_SQLITE_DIR="$NC_PATH/sqlite"
