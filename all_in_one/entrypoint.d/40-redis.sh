@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+log "Running 40-redis.sh"
 if [ -d "/mnt/redis" ]; then
   log "Configuring Redis to use /mnt/redis as data dir"
   mkdir -p /mnt/redis
