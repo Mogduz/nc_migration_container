@@ -7,13 +7,18 @@ mkdir -p "$NC_DATA_DIR" "$NC_CONFIG_DIR" "$NC_SQLITE_DIR" "$NC_APPS_DIR" "$NC_FI
 chown -R www-data:www-data "$NC_CONFIG_DIR" "$NC_DATA_DIR" "$NC_SQLITE_DIR" "$NC_APPS_DIR" "$NC_FILES_DIR" "$NC_SESSIONS_DIR"
 
 log "Fixing permissions on mounted volumes"
-for dir in "$NC_CONFIG_DIR" "$NC_APPS_DIR" "$NC_FILES_DIR"; do
+apply_nc_permissions() {
+  local dir="$1"
   if [ -d "$dir" ]; then
     chown -R www-data:www-data "$dir"
     find "$dir" -type d -exec chmod 750 {} +
     find "$dir" -type f -exec chmod 640 {} +
   fi
-done
+}
+
+apply_nc_permissions "$NC_CONFIG_DIR"
+apply_nc_permissions "$NC_APPS_DIR"
+apply_nc_permissions "$NC_FILES_DIR"
 
 if [ -d "$NC_SESSIONS_DIR" ]; then
   chown -R www-data:www-data "$NC_SESSIONS_DIR"
