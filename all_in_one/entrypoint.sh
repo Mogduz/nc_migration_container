@@ -90,6 +90,26 @@ else
   log "/mnt/redis not mounted; using default Redis data dir"
 fi
 
+if [ -f "$NC_CONFIG_DIR/config.php" ]; then
+  log "Updating trusted domains in config.php"
+  php -r '
+    $configFile = "'"$NC_CONFIG_DIR"'/config.php";
+    $cfg = include $configFile;
+    if (!is_array($cfg)) { fwrite(STDERR, "Invalid config.php\n"); exit(1); }
+    $trusted = $cfg["trusted_domains"] ?? [];
+    if (!is_array($trusted)) { $trusted = []; }
+    $add = preg_split("/[ ,]+/", getenv("NC_TRUSTED_DOMAINS") ?: "localhost", -1, PREG_SPLIT_NO_EMPTY);
+    foreach ($add as $d) {
+      if (!in_array($d, $trusted, true)) { $trusted[] = $d; }
+    }
+    $cfg["trusted_domains"] = $trusted;
+    $tmp = $configFile . ".tmp";
+    $out = "<?php\n$CONFIG = " . var_export($cfg, true) . ";\n";
+    file_put_contents($tmp, $out);
+    rename($tmp, $configFile);
+  '
+fi
+
 MYSQL_ADMIN_CMD=(mysqladmin --defaults-file=/dev/null -h"$MYSQL_HOST" -uroot)
 MYSQL_CMD=(mysql --defaults-file=/dev/null -h"$MYSQL_HOST" -uroot)
 if [ -n "$MYSQL_ROOT_PASSWORD" ]; then
