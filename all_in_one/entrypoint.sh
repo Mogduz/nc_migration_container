@@ -120,20 +120,10 @@ for dump in /mnt/mysql/*.sql /mnt/mysql/*.sql.gz; do
     log "Using database: $DUMP_DB"
     MYSQL_USER_CMD=(mysql --defaults-file=/dev/null -h"$MYSQL_HOST" -u"$MYSQL_USER" -p"$MYSQL_PASSWORD")
     if [[ "$dump" == *.gz ]] && gzip -t "$dump" >/dev/null 2>&1; then
-      gzip -dc "$dump" | tr -d '\r' | sed -E \
-        -e 's/\\\\-/-/g' \
-        -e 's/^\\xEF\\xBB\\xBF//' \
-        -e 's/^\\-\\-/--/' \
-        -e 's/DEFINER[ ]*=[ ]*`[^`]+`@`[^`]+`//g' \
-        -e 's/DEFINER[ ]*=[ ]*[^ ]+//g' \
+      gzip -dc "$dump" | perl -pe 's/\r//g; s/\\-/-/g; s/^\x{FEFF}//; s/^--/--/; s/DEFINER[ ]*=[ ]*`[^`]+`@`[^`]+`//g; s/DEFINER[ ]*=[ ]*[^ ]+//g' \
         | "${MYSQL_USER_CMD[@]}" --binary-mode --force "$DUMP_DB"
     else
-      tr -d '\r' < "$dump" | sed -E \
-        -e 's/\\\\-/-/g' \
-        -e 's/^\\xEF\\xBB\\xBF//' \
-        -e 's/^\\-\\-/--/' \
-        -e 's/DEFINER[ ]*=[ ]*`[^`]+`@`[^`]+`//g' \
-        -e 's/DEFINER[ ]*=[ ]*[^ ]+//g' \
+      perl -pe 's/\r//g; s/\\-/-/g; s/^\x{FEFF}//; s/^--/--/; s/DEFINER[ ]*=[ ]*`[^`]+`@`[^`]+`//g; s/DEFINER[ ]*=[ ]*[^ ]+//g' < "$dump" \
         | "${MYSQL_USER_CMD[@]}" --binary-mode --force "$DUMP_DB"
     fi
   fi
