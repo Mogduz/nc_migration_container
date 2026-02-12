@@ -22,3 +22,12 @@ NC_SESSIONS_DIR="/var/lib/php/sessions"
 : "${MYSQL_PASSWORD:=nextcloud}"
 : "${MYSQL_ROOT_PASSWORD:=}"
 : "${MYSQL_HOST:=localhost}"
+
+# Map compose env vars to ownCloud-style overrides (used by overwrite.config.php)
+: "${DB_TYPE:=mysql}"
+: "${OWNCLOUD_DB_TYPE:=${DB_TYPE}}"
+: "${OWNCLOUD_DB_HOST:=${MYSQL_HOST}}"
+: "${OWNCLOUD_DB_NAME:=${MYSQL_DATABASE}}"
+: "${OWNCLOUD_DB_USER:=${MYSQL_USER}}"
+: "${OWNCLOUD_DB_PASSWORD:=${MYSQL_PASSWORD}}"
+export OWNCLOUD_DB_TYPE OWNCLOUD_DB_HOST OWNCLOUD_DB_NAME OWNCLOUD_DB_USER OWNCLOUD_DB_PASSWORD
