@@ -28,6 +28,13 @@ if [ -d "$NC_CONFIG_DIR" ]; then
   find "$NC_CONFIG_DIR" -type f -exec chmod 660 {} + || true
 fi
 
+log "Ensuring /mnt/mysql is writable for www-data"
+if [ -d "/mnt/mysql" ]; then
+  chown -R www-data:www-data /mnt/mysql || true
+  find /mnt/mysql -type d -exec chmod 770 {} + || true
+  find /mnt/mysql -type f -exec chmod 660 {} + || true
+fi
+
 if [ -d "$NC_SESSIONS_DIR" ]; then
   chown -R www-data:www-data "$NC_SESSIONS_DIR"
   chmod 700 "$NC_SESSIONS_DIR"
