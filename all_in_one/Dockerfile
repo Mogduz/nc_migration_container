@@ -28,6 +28,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     php7.4-bz2 \
     php7.4-intl \
     php7.4-apcu \
+    php-redis \
     libxml2 \
     zlib1g \
     bzip2 \
