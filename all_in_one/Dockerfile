@@ -44,8 +44,8 @@ RUN a2enmod rewrite headers env dir mime
 # Enable APCu in CLI (required for occ)
 RUN printf '%s\n' 'apc.enable_cli=1' > /etc/php/7.4/cli/conf.d/99-apcu-cli.ini
 
-# Download and install Nextcloud 25 at build time (fixed version)
-ARG NC_VERSION=25.0.13
+# Download and install Nextcloud at build time (override with --build-arg NC_VERSION)
+ARG NC_VERSION=20.0.14
 ENV NC_VERSION=${NC_VERSION}
 RUN set -eux; \
     curl -fsSLO "https://download.nextcloud.com/server/releases/nextcloud-${NC_VERSION}.tar.bz2"; \
