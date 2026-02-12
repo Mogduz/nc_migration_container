@@ -51,12 +51,10 @@ RUN set -eux; \
     chown -R www-data:www-data /var/www/html/nextcloud; \
     rm -f "nextcloud-${NC_VERSION}.tar.bz2" "nextcloud-${NC_VERSION}.tar.bz2.sha256"
 
-# Move initial config to external path and symlink it
+# Ensure config directory exists (will be bind-mounted at runtime)
 RUN set -eux; \
-    mkdir -p /mnt/NextCloud/config; \
-    cp -a /var/www/html/nextcloud/config/. /mnt/NextCloud/config/; \
-    rm -rf /var/www/html/nextcloud/config; \
-    ln -s /mnt/NextCloud/config /var/www/html/nextcloud/config
+    mkdir -p /var/www/html/nextcloud/config; \
+    chown -R www-data:www-data /var/www/html/nextcloud/config
 
 # Entrypoint for initialization
 COPY entrypoint.sh /entrypoint.sh
