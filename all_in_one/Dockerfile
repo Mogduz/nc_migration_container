@@ -27,6 +27,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     php7.4-sqlite3 \
     php7.4-bz2 \
     php7.4-intl \
+    php7.4-apcu \
     libxml2 \
     zlib1g \
     bzip2 \
@@ -38,6 +39,9 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 
 # Enable Apache modules required by Nextcloud
 RUN a2enmod rewrite headers env dir mime
+
+# Enable APCu in CLI (required for occ)
+RUN printf '%s\n' 'apc.enable_cli=1' > /etc/php/7.4/cli/conf.d/99-apcu-cli.ini
 
 # Download and install Nextcloud 25 at build time (fixed version)
 ARG NC_VERSION=25.0.0
