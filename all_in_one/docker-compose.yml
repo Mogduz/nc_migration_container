@@ -11,7 +11,7 @@ services:
       - MYSQL_USER=nextcloud
       - MYSQL_PASSWORD=nextcloud
       - MYSQL_ROOT_PASSWORD=root
-      - OWNCLOUD_DB_TYPE=mysql
+      - DB_TYPE=mysql
     volumes:
       - ./nextcloud_config:/var/www/html/nextcloud/config
       - ./nextcloud_apps:/var/www/html/nextcloud/custom
