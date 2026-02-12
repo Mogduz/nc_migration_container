@@ -20,6 +20,14 @@ apply_nc_permissions "$NC_CONFIG_DIR"
 apply_nc_permissions "$NC_APPS_DIR"
 apply_nc_permissions "$NC_FILES_DIR"
 
+log "Ensuring config dir is writable for www-data"
+if [ -d "$NC_CONFIG_DIR" ]; then
+  chown -R www-data:www-data "$NC_CONFIG_DIR" || true
+  chmod 770 "$NC_CONFIG_DIR" || true
+  find "$NC_CONFIG_DIR" -type d -exec chmod 770 {} + || true
+  find "$NC_CONFIG_DIR" -type f -exec chmod 660 {} + || true
+fi
+
 if [ -d "$NC_SESSIONS_DIR" ]; then
   chown -R www-data:www-data "$NC_SESSIONS_DIR"
   chmod 700 "$NC_SESSIONS_DIR"
