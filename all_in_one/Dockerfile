@@ -64,7 +64,9 @@ RUN set -eux; \
 # Entrypoint for initialization
 COPY entrypoint.sh /entrypoint.sh
 COPY entrypoint.d /entrypoint.d
+COPY migrate.sh /usr/local/bin/migrate.sh
 RUN chmod +x /entrypoint.sh \
+    && chmod +x /usr/local/bin/migrate.sh \
     && printf '%s\n' '#!/usr/bin/env bash' 'exec php /var/www/html/nextcloud/occ "$@"' > /usr/local/bin/occ \
     && chmod +x /usr/local/bin/occ
 
