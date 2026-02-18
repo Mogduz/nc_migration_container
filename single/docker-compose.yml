@@ -1,0 +1,65 @@
+version: "3.8"
+
+services:
+  # WIP: Diese single-Variante ist noch nicht final.
+  # Hauptservice mit Nextcloud/Apache aus dem lokalen Dockerfile.
+  app:
+    # Baut Image aus dem Verzeichnis single/.
+    build: .
+    container_name: nc_migration_container
+    ports:
+      # Host 8080 -> Container 80 (HTTP).
+      - "8080:80"
+    # App wartet logisch auf DB/Redis, bevor sie startet.
+    depends_on:
+      - db
+      - redis
+    environment:
+      # NC_AUTO_INSTALL=0 bedeutet: kein automatischer Installerlauf.
+      - NC_AUTO_INSTALL=0
+      # Default-Credentials nur fuer lokale/temporare Nutzung.
+      - NC_ADMIN_USER=admin
+      - NC_ADMIN_PASSWORD=admin
+      # Trusted Domain fuer Browserzugriff im lokalen Setup.
+      - NC_TRUSTED_DOMAINS=localhost
+      # Externes Datenverzeichnis fuer Nextcloud-Dateien.
+      - NC_DATA_DIR=/mnt/NextCloud/data
+      # Datenbankverbindung fuer Nextcloud.
+      - MYSQL_HOST=db
+      - MYSQL_DATABASE=nextcloud
+      - MYSQL_USER=nextcloud
+      - MYSQL_PASSWORD=nextcloud
+      # Redis-Host fuer Caching/Locking.
+      - REDIS_HOST=redis
+    volumes:
+      # Persistente Nextcloud-Konfiguration (enthaelt u. a. config.php).
+      - ./nextcloud_config:/mnt/NextCloud/config
+      # Persistente Nutzdaten.
+      - ./nextcloud_data:/mnt/NextCloud/data
+
+  # MariaDB-Service als lokale DB fuer Nextcloud.
+  db:
+    image: mariadb:10.11
+    container_name: nc_migration_db
+    # Empfohlene MariaDB-Optionen fuer Nextcloud-Kompatibilitaet.
+    command: --transaction-isolation=READ-COMMITTED --binlog-format=ROW
+    restart: unless-stopped
+    environment:
+      # Default-Werte nur fuer lokale Nutzung.
+      - MYSQL_ROOT_PASSWORD=root
+      - MYSQL_DATABASE=nextcloud
+      - MYSQL_USER=nextcloud
+      - MYSQL_PASSWORD=nextcloud
+    volumes:
+      # Benanntes Docker-Volume fuer persistente DB-Daten.
+      - db_data:/var/lib/mysql
+
+  # Redis-Service fuer Caching/Dateisperren.
+  redis:
+    image: redis:7-alpine
+    container_name: nc_migration_redis
+    restart: unless-stopped
+
+volumes:
+  # Volume-Definition fuer MariaDB.
+  db_data:
