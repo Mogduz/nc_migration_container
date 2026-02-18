@@ -1,3 +1,6 @@
+# WIP-Hinweis:
+# Diese single-Variante ist in Entwicklung und noch nicht final.
+#
 # Base image:
 # Ubuntu 20.04 wird hier bewusst als stabile, bekannte Basis fuer den
 # kurzfristigen Migrationskontext verwendet.
