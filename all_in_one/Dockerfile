@@ -1,9 +1,14 @@
-# Base image
+# Basisimage fuer die kombinierte Migrationsumgebung.
 FROM ubuntu:20.04
 
+# Deaktiviert interaktive Paketdialoge.
 ENV DEBIAN_FRONTEND=noninteractive
 
-# Install system dependencies + services
+# Installiert alle benoetigten Dienste in einem Image:
+# - Apache + PHP fuer Nextcloud
+# - MariaDB fuer Datenbankimport/Upgrade
+# - Redis fuer Caching/Locking
+# - Supervisor zur Prozesssteuerung mehrerer Dienste
 RUN apt-get update && apt-get install -y --no-install-recommends \
     ca-certificates \
     curl \
@@ -38,13 +43,14 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     supervisor \
     && rm -rf /var/lib/apt/lists/*
 
-# Enable Apache modules required by Nextcloud
+# Aktiviert notwendige Apache-Module fuer Nextcloud.
 RUN a2enmod rewrite headers env dir mime
 
-# Enable APCu in CLI (required for occ)
+# Aktiviert APCu auch fuer CLI-Aufrufe; wichtig fuer `occ`.
 RUN printf '%s\n' 'apc.enable_cli=1' > /etc/php/7.4/cli/conf.d/99-apcu-cli.ini
 
-# Download and install Nextcloud at build time (override with --build-arg NC_VERSION)
+# Nextcloud wird fest versioniert im Build gezogen und geprueft.
+# NC_VERSION kann bei Bedarf per --build-arg ueberschrieben werden.
 ARG NC_VERSION=25.0.13
 ENV NC_VERSION=${NC_VERSION}
 RUN set -eux; \
@@ -56,12 +62,12 @@ RUN set -eux; \
     chown -R www-data:www-data /var/www/html/nextcloud; \
     rm -f "nextcloud-${NC_VERSION}.tar.bz2" "nextcloud-${NC_VERSION}.tar.bz2.sha256"
 
-# Ensure config directory exists (will be bind-mounted at runtime)
+# Konfigurationsverzeichnis anlegen; wird typischerweise per Bind-Mount ersetzt.
 RUN set -eux; \
     mkdir -p /var/www/html/nextcloud/config; \
     chown -R www-data:www-data /var/www/html/nextcloud/config
 
-# Entrypoint for initialization
+# Entry-Skripte und Migrations-Helper in das Image kopieren.
 COPY entrypoint.sh /entrypoint.sh
 COPY entrypoint.d /entrypoint.d
 COPY migrate.sh /usr/local/bin/migrate.sh
@@ -70,16 +76,24 @@ RUN chmod +x /entrypoint.sh \
     && printf '%s\n' '#!/usr/bin/env bash' 'exec php /var/www/html/nextcloud/occ "$@"' > /usr/local/bin/occ \
     && chmod +x /usr/local/bin/occ
 
-# Supervisor configuration
+# Supervisor- und Healthcheck-Konfiguration.
 COPY supervisor.conf /etc/supervisor/conf.d/supervisor.conf
 COPY healthcheck.sh /healthcheck.sh
 RUN chmod +x /healthcheck.sh
 
+# Exponierte Ports:
+# - 80   Apache
+# - 3306 MariaDB (intern i. d. R. localhost)
+# - 6379 Redis
 EXPOSE 80 3306 6379
 
+# Arbeitsverzeichnis fuer zusaetzliche manuelle Schritte.
 WORKDIR /app
 
+# Entry und Startkommando:
+# Supervisor startet und ueberwacht Apache, MySQL und Redis.
 ENTRYPOINT ["/entrypoint.sh"]
 CMD ["/usr/bin/supervisord", "-n", "-c", "/etc/supervisor/supervisord.conf"]
 
+# Healthcheck auf lokale HTTP-Erreichbarkeit.
 HEALTHCHECK --interval=10s --timeout=5s --start-period=120s --retries=3 CMD ["/healthcheck.sh"]
