@@ -1,3 +1,9 @@
+# -------------------------------------------------------------------
+# Projekt-Notiz:
+# Diese Datei basiert auf einer generischen Python-Ignoreliste und wird
+# in diesem Repo auch fuer Docker-/Migrations-Hilfsdateien genutzt.
+# -------------------------------------------------------------------
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[codz]
