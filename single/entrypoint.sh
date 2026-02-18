@@ -1,4 +1,7 @@
 #!/usr/bin/env bash
+# WIP-Hinweis:
+# Dieses Entrypoint-Skript gehoert zur single-Variante in Entwicklung.
+#
 # Strikter Shell-Modus:
 # -e  Abbruch bei Fehler
 # -u  Fehler bei undefinierten Variablen
