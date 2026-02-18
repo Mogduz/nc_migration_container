@@ -1,11 +1,17 @@
 services:
+  # Ein-Container-Setup fuer Migration:
+  # Nextcloud + MariaDB + Redis laufen gemeinsam im selben Container.
   all_in_one:
+    # Build aus all_in_one/Dockerfile.
     build: .
     container_name: nc_migration_all_in_one
     ports:
+      # HTTP-Zugriff auf Nextcloud.
       - "8080:80"
+      # Optionaler Redis-Port fuer externe Diagnose/Tests.
       - "6379:6379"
     environment:
+      # Nextcloud-Netzwerk/DB-Basiskonfiguration.
       - NC_TRUSTED_DOMAINS=localhost
       - MYSQL_DATABASE=nextcloud
       - MYSQL_USER=nextcloud
@@ -13,9 +19,15 @@ services:
       - MYSQL_ROOT_PASSWORD=root
       - DB_TYPE=mysql
     volumes:
+      # Persistente Nextcloud-Konfiguration.
       - ./nextcloud_config:/var/www/html/nextcloud/config
+      # Benutzerdefinierte Apps/Custom-Verzeichnis.
       - ./nextcloud_apps:/var/www/html/nextcloud/custom
+      # Nextcloud-Datenverzeichnis.
       - ./nextcloud_files:/var/www/html/nextcloud/data
+      # PHP-Session-Verzeichnis.
       - ./nextcloud_sessions:/var/lib/php/sessions
+      # SQL-Input/Output fuer Migration (Dumps).
       - ./mysql:/mnt/mysql
+      # Redis-RDB-Verzeichnis fuer optionalen Datenimport.
       - ./redis:/mnt/redis
