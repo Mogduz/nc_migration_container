@@ -7,37 +7,36 @@ log() {
   echo "[migrate] $*"
 }
 
-# Helper fuer occ-Aufrufe:
-# - OCC fuer regulare Kommandos
-# - OCC_NOINT fuer non-interactive CI-/Skript-Ausfuehrung
-OCC="php /var/www/html/nextcloud/occ"
-OCC_NOINT="$OCC --no-interaction"
+# occ muss als Besitzer von config/config.php laufen (typisch: www-data).
+run_occ() {
+  su -s /bin/sh www-data -c "php /var/www/html/nextcloud/occ --no-interaction $*"
+}
 
 log "Starting migration steps"
 
 # Fuehrt das eigentliche Nextcloud-Upgrade durch.
 log "Running occ upgrade (non-interactive)"
-$OCC_NOINT upgrade
+run_occ upgrade
 
 # Sicherheitsmodus nach Upgrade explizit deaktivieren.
 log "Disabling maintenance mode"
-$OCC_NOINT maintenance:mode --off
+run_occ maintenance:mode --off
 
 # Standard-DB-Nacharbeiten fuer typische Migrationsinkonsistenzen.
 log "Running database maintenance commands (non-interactive)"
-$OCC_NOINT db:convert-filecache-bigint
-$OCC_NOINT db:add-missing-columns
-$OCC_NOINT db:add-missing-indices
-$OCC_NOINT db:add-missing-primary-keys
+run_occ db:convert-filecache-bigint
+run_occ db:add-missing-columns
+run_occ db:add-missing-indices
+run_occ db:add-missing-primary-keys
 
 # Aktualisiert alle installierten Apps auf kompatible Versionen.
 log "Updating apps (non-interactive)"
-$OCC_NOINT app:update --all
+run_occ app:update --all
 
 log "Migration finished"
 log "Current status:"
 # Statusausgabe darf fehlschlagen, ohne das Skript komplett zu stoppen.
-$OCC_NOINT status || true
+run_occ status || true
 
 log "Creating database dump (gz) in /mnt/mysql"
 # DB-Parameter aus Umgebungsvariablen uebernehmen.
