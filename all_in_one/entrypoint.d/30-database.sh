@@ -91,6 +91,8 @@ MYSQL_USER_ESCAPED="$(sql_escape "$MYSQL_USER")"
 MYSQL_PASSWORD_ESCAPED="$(sql_escape "$MYSQL_PASSWORD")"
 "${MYSQL_CMD[@]}" --force -e "CREATE DATABASE IF NOT EXISTS \`${USER_DB_ESCAPED}\` CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci;"
 "${MYSQL_CMD[@]}" --force -e "CREATE USER IF NOT EXISTS '${MYSQL_USER_ESCAPED}'@'localhost' IDENTIFIED WITH mysql_native_password BY '${MYSQL_PASSWORD_ESCAPED}'; GRANT ALL PRIVILEGES ON \`${USER_DB_ESCAPED}\`.* TO '${MYSQL_USER_ESCAPED}'@'localhost'; FLUSH PRIVILEGES;"
+# Fuer TCP-Zugriff (127.0.0.1) zusaetzlich expliziten Host-Account anlegen.
+"${MYSQL_CMD[@]}" --force -e "CREATE USER IF NOT EXISTS '${MYSQL_USER_ESCAPED}'@'127.0.0.1' IDENTIFIED WITH mysql_native_password BY '${MYSQL_PASSWORD_ESCAPED}'; GRANT ALL PRIVILEGES ON \`${USER_DB_ESCAPED}\`.* TO '${MYSQL_USER_ESCAPED}'@'127.0.0.1'; FLUSH PRIVILEGES;"
 
 log "Checking for SQL dumps in /mnt/mysql"
 # Nullglob vermeidet literale Muster, wenn keine Dateien existieren.
