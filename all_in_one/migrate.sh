@@ -12,7 +12,37 @@ run_occ() {
   su -s /bin/sh www-data -c "php /var/www/html/nextcloud/occ --no-interaction $*"
 }
 
+normalize_dbhost_for_occ() {
+  local config_file="/var/www/html/nextcloud/config/config.php"
+  local target_host="${MYSQL_HOST:-localhost}"
+
+  if [ "$target_host" = "localhost" ]; then
+    # localhost erzwingt oft Unix-Socket; fuer occ als www-data lieber TCP.
+    target_host="127.0.0.1"
+  fi
+
+  if [ ! -f "$config_file" ]; then
+    return 0
+  fi
+
+  # Nur mysql/mariadb-Konfigurationen anfassen.
+  if ! grep -Eq "'dbtype'[[:space:]]*=>[[:space:]]*'(mysql|mysqli)'" "$config_file"; then
+    return 0
+  fi
+
+  # Socket-/localhost-Hosts auf TCP normalisieren, um Permission-Probleme zu vermeiden.
+  if grep -Eq "'dbhost'[[:space:]]*=>[[:space:]]*'localhost(:[0-9]+)?'" "$config_file" \
+    || grep -Eq "'dbhost'[[:space:]]*=>[[:space:]]*'/[^']+'" "$config_file"; then
+    log "Normalizing dbhost in config.php to ${target_host} for occ"
+    sed -i -E "s/'dbhost'[[:space:]]*=>[[:space:]]*'localhost(:[0-9]+)?'/'dbhost' => '${target_host}'/" "$config_file"
+    sed -i -E "s|'dbhost'[[:space:]]*=>[[:space:]]*'/[^']+'|'dbhost' => '${target_host}'|" "$config_file"
+    chown www-data:www-data "$config_file" || true
+    chmod 640 "$config_file" || true
+  fi
+}
+
 log "Starting migration steps"
+normalize_dbhost_for_occ
 
 # Fuehrt das eigentliche Nextcloud-Upgrade durch.
 log "Running occ upgrade (non-interactive)"
