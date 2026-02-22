@@ -6,7 +6,7 @@ ENV DEBIAN_FRONTEND=noninteractive
 
 # Installiert alle benoetigten Dienste in einem Image:
 # - Apache + PHP fuer Nextcloud
-# - MariaDB fuer Datenbankimport/Upgrade
+# - MySQL 8 fuer Datenbankimport/Upgrade
 # - Redis fuer Caching/Locking
 # - Supervisor zur Prozesssteuerung mehrerer Dienste
 RUN apt-get update && apt-get install -y --no-install-recommends \
@@ -38,10 +38,15 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     zlib1g \
     bzip2 \
     unzip \
-    mariadb-server \
+    mysql-server-8.0 \
     redis-server \
     supervisor \
     && rm -rf /var/lib/apt/lists/*
+
+# Laufzeitverzeichnis fuer mysqld sicherstellen.
+RUN set -eux; \
+    mkdir -p /var/run/mysqld; \
+    chown -R mysql:mysql /var/run/mysqld /var/lib/mysql
 
 # Aktiviert notwendige Apache-Module fuer Nextcloud.
 RUN a2enmod rewrite headers env dir mime
@@ -83,7 +88,7 @@ RUN chmod +x /healthcheck.sh
 
 # Exponierte Ports:
 # - 80   Apache
-# - 3306 MariaDB (intern i. d. R. localhost)
+# - 3306 MySQL (intern i. d. R. localhost)
 # - 6379 Redis
 EXPOSE 80 3306 6379
 
