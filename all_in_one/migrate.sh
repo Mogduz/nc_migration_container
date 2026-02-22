@@ -58,6 +58,11 @@ fi
 log "Dumping database ${DB_NAME} to ${DUMP_PATH}"
 # Single-transaction reduziert Locking bei InnoDB-Dumps.
 mysqldump -h"${DB_HOST}" -u"${DB_USER}" -p"${DB_PASS}" \
-  --single-transaction --routines --triggers --events \
+  --single-transaction \
+  --routines --triggers --events \
+  --default-character-set=utf8mb4 \
+  --set-gtid-purged=OFF \
+  --column-statistics=0 \
+  --no-tablespaces \
   "${DB_NAME}" | gzip -c > "${DUMP_PATH}"
 log "Database dump completed"
