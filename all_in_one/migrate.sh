@@ -7,10 +7,30 @@ log() {
   echo "[migrate] $*"
 }
 
+# Startzeit fuer Laufzeitmessung.
+MIGRATION_START_TS="$(date +%s)"
+
 # occ muss als Besitzer von config/config.php laufen (typisch: www-data).
 run_occ() {
   su -s /bin/sh www-data -c "php /var/www/html/nextcloud/occ --no-interaction $*"
 }
+
+print_migration_duration() {
+  local elapsed now total_minutes total_hours mm_for_hhmmss ss
+  now="$(date +%s)"
+  elapsed="$((now - MIGRATION_START_TS))"
+  total_minutes="$((elapsed / 60))"
+  total_hours="$((elapsed / 3600))"
+  mm_for_hhmmss="$(((elapsed % 3600) / 60))"
+  ss="$((elapsed % 60))"
+  log "Migration duration: ${elapsed} seconds | $(printf '%02d:%02d' "$total_minutes" "$ss") | $(printf '%02d:%02d:%02d' "$total_hours" "$mm_for_hhmmss" "$ss")"
+}
+
+on_exit() {
+  print_migration_duration
+}
+
+trap on_exit EXIT
 
 normalize_dbhost_for_occ() {
   local config_file="/var/www/html/nextcloud/config/config.php"
