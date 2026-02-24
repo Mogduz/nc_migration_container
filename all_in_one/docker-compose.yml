@@ -10,24 +10,22 @@ services:
       - "8080:80"
       # Optionaler Redis-Port fuer externe Diagnose/Tests.
       - "6379:6379"
+    # Variablen sind im Compose explizit definiert, Werte kommen aus .env.
     environment:
-      # Nextcloud-Netzwerk/DB-Basiskonfiguration.
-      - NC_TRUSTED_DOMAINS=localhost
-      - MYSQL_DATABASE=nextcloud
-      - MYSQL_USER=nextcloud
-      - MYSQL_PASSWORD=nextcloud
-      - MYSQL_ROOT_PASSWORD=root
-      - DB_TYPE=mysql
+      NC_TRUSTED_DOMAINS: ${NC_TRUSTED_DOMAINS}
+      MYSQL_DATABASE: ${MYSQL_DATABASE}
+      MYSQL_USER: ${MYSQL_USER}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD}
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+      DB_TYPE: ${DB_TYPE}
     volumes:
       # Persistente Nextcloud-Konfiguration.
-      - ./nextcloud_config:/var/www/html/nextcloud/config
+      - ${CONFIG_DIR}:/var/www/html/nextcloud/config
       # Benutzerdefinierte Apps/Custom-Verzeichnis.
-      - ./nextcloud_apps:/var/www/html/nextcloud/custom
+      - ${APPS_DIR}:/var/www/html/nextcloud/custom
       # Nextcloud-Datenverzeichnis.
-      - ./nextcloud_files:/var/www/html/nextcloud/data
-      # PHP-Session-Verzeichnis.
-      - ./nextcloud_sessions:/var/lib/php/sessions
+      - ${FILES_DIR}:${FILES_DIR_CONTAINER}
       # SQL-Input/Output fuer Migration (Dumps).
-      - ./mysql:/mnt/mysql
+      - ${DB_DUMP_DIR}:/mnt/mysql
       # Redis-RDB-Verzeichnis fuer optionalen Datenimport.
-      - ./redis:/mnt/redis
+      - ${REDIS_DIR}:/mnt/redis
