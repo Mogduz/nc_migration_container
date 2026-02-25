@@ -6,10 +6,9 @@ ENV DEBIAN_FRONTEND=noninteractive
 
 # Build-Profil fuer APT-Quellen:
 # - normal: unveraenderte Ubuntu-Repositories
-# - ldbv:   Spiegelserver fuer APT waehrend des Builds
+# - ldbv:   Repositories aus apt/ldbv.sources.list waehrend des Builds
 ARG APT_PROFILE=normal
-ARG LDBV_APT_MAIN_MIRROR
-ARG LDBV_APT_SECURITY_MIRROR
+COPY apt/ldbv.sources.list /tmp/ldbv.sources.list
 
 # Installiert alle benoetigten Dienste in einem Image:
 # - Apache + PHP fuer Nextcloud
@@ -21,13 +20,12 @@ RUN set -eux; \
       normal) \
         ;; \
       ldbv) \
-        : "${LDBV_APT_MAIN_MIRROR:?LDBV_APT_MAIN_MIRROR muss fuer APT_PROFILE=ldbv gesetzt sein}"; \
-        : "${LDBV_APT_SECURITY_MIRROR:?LDBV_APT_SECURITY_MIRROR muss fuer APT_PROFILE=ldbv gesetzt sein}"; \
-        sed -E -i \
-          -e "s|https?://([a-z]{2}\\.)?archive\\.ubuntu\\.com/ubuntu|${LDBV_APT_MAIN_MIRROR}|g" \
-          -e "s|https?://security\\.ubuntu\\.com/ubuntu|${LDBV_APT_SECURITY_MIRROR}|g" \
-          -e "s|https?://ports\\.ubuntu\\.com/ubuntu-ports|${LDBV_APT_MAIN_MIRROR}|g" \
-          /etc/apt/sources.list; \
+        if ! grep -Eq '^[[:space:]]*deb[[:space:]]+' /tmp/ldbv.sources.list; then \
+          echo "APT_PROFILE=ldbv erfordert mindestens einen gueltigen 'deb'-Eintrag in apt/ldbv.sources.list" >&2; \
+          exit 1; \
+        fi; \
+        cp /tmp/ldbv.sources.list /etc/apt/sources.list; \
+        find /etc/apt/sources.list.d -mindepth 1 -maxdepth 1 -type f \( -name '*.list' -o -name '*.sources' \) -delete; \
         ;; \
       *) \
         echo "Ungueltiges APT_PROFILE: '${APT_PROFILE}' (erlaubt: normal, ldbv)" >&2; \
@@ -66,7 +64,7 @@ RUN set -eux; \
     mysql-server-8.0 \
     redis-server \
     supervisor \
-    && rm -rf /var/lib/apt/lists/*
+    && rm -rf /var/lib/apt/lists/* /tmp/ldbv.sources.list
 
 # Laufzeitverzeichnis fuer mysqld sicherstellen.
 RUN set -eux; \
