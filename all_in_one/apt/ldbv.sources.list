@@ -1,0 +1,2 @@
+# Diese Datei bleibt absichtlich im Repository.
+# Bei APT_PROFILE=ldbv hier die gewuenschten Ubuntu-APT-Repositories als `deb`-Zeilen eintragen.
