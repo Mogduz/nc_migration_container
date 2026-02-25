@@ -7,8 +7,6 @@ services:
       context: .
       args:
         APT_PROFILE: ${APT_PROFILE:-normal}
-        LDBV_APT_MAIN_MIRROR: ${LDBV_APT_MAIN_MIRROR:-}
-        LDBV_APT_SECURITY_MIRROR: ${LDBV_APT_SECURITY_MIRROR:-}
     container_name: nc_migration_all_in_one
     ports:
       # HTTP-Zugriff auf Nextcloud.
