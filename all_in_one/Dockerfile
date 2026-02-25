@@ -4,12 +4,37 @@ FROM ubuntu:20.04
 # Deaktiviert interaktive Paketdialoge.
 ENV DEBIAN_FRONTEND=noninteractive
 
+# Build-Profil fuer APT-Quellen:
+# - normal: unveraenderte Ubuntu-Repositories
+# - ldbv:   Spiegelserver fuer APT waehrend des Builds
+ARG APT_PROFILE=normal
+ARG LDBV_APT_MAIN_MIRROR
+ARG LDBV_APT_SECURITY_MIRROR
+
 # Installiert alle benoetigten Dienste in einem Image:
 # - Apache + PHP fuer Nextcloud
 # - MySQL 8 fuer Datenbankimport/Upgrade
 # - Redis fuer Caching/Locking
 # - Supervisor zur Prozesssteuerung mehrerer Dienste
-RUN apt-get update && apt-get install -y --no-install-recommends \
+RUN set -eux; \
+    case "${APT_PROFILE}" in \
+      normal) \
+        ;; \
+      ldbv) \
+        : "${LDBV_APT_MAIN_MIRROR:?LDBV_APT_MAIN_MIRROR muss fuer APT_PROFILE=ldbv gesetzt sein}"; \
+        : "${LDBV_APT_SECURITY_MIRROR:?LDBV_APT_SECURITY_MIRROR muss fuer APT_PROFILE=ldbv gesetzt sein}"; \
+        sed -E -i \
+          -e "s|https?://([a-z]{2}\\.)?archive\\.ubuntu\\.com/ubuntu|${LDBV_APT_MAIN_MIRROR}|g" \
+          -e "s|https?://security\\.ubuntu\\.com/ubuntu|${LDBV_APT_SECURITY_MIRROR}|g" \
+          -e "s|https?://ports\\.ubuntu\\.com/ubuntu-ports|${LDBV_APT_MAIN_MIRROR}|g" \
+          /etc/apt/sources.list; \
+        ;; \
+      *) \
+        echo "Ungueltiges APT_PROFILE: '${APT_PROFILE}' (erlaubt: normal, ldbv)" >&2; \
+        exit 1; \
+        ;; \
+    esac; \
+    apt-get update && apt-get install -y --no-install-recommends \
     ca-certificates \
     curl \
     apache2 \
