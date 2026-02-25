@@ -15,7 +15,6 @@ NC_SESSIONS_DIR="/var/lib/php/sessions"
 # Nextcloud-Defaults; koennen per ENV ueberschrieben werden.
 : "${NC_ADMIN_USER:=admin}"
 : "${NC_ADMIN_PASSWORD:=admin}"
-: "${NC_TRUSTED_DOMAINS:=localhost}"
 : "${NC_DATA_DIR:=${NC_FILES_DIR}}"
 
 # MariaDB-Defaults fuer lokale Migrationsumgebung.
