@@ -3,16 +3,20 @@ services:
   # Nextcloud + MariaDB + Redis laufen gemeinsam im selben Container.
   all_in_one:
     # Build aus all_in_one/Dockerfile.
-    build: .
+    build:
+      context: .
+      args:
+        APT_PROFILE: ${APT_PROFILE:-normal}
+        LDBV_APT_MAIN_MIRROR: ${LDBV_APT_MAIN_MIRROR:-}
+        LDBV_APT_SECURITY_MIRROR: ${LDBV_APT_SECURITY_MIRROR:-}
     container_name: nc_migration_all_in_one
     ports:
       # HTTP-Zugriff auf Nextcloud.
-      - "8080:80"
+      - "${PORT}:80"
       # Optionaler Redis-Port fuer externe Diagnose/Tests.
       - "6379:6379"
     # Variablen sind im Compose explizit definiert, Werte kommen aus .env.
     environment:
-      NC_TRUSTED_DOMAINS: ${NC_TRUSTED_DOMAINS}
       MYSQL_DATABASE: ${MYSQL_DATABASE}
       MYSQL_USER: ${MYSQL_USER}
       MYSQL_PASSWORD: ${MYSQL_PASSWORD}
