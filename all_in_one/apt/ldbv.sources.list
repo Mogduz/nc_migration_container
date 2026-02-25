@@ -1,2 +1,20 @@
-# Diese Datei bleibt absichtlich im Repository.
-# Bei APT_PROFILE=ldbv hier die gewuenschten Ubuntu-APT-Repositories als `deb`-Zeilen eintragen.
+# Ubuntu 20.04 (focal) Sources Template
+#
+# Option A (intern): trage hier eure internen Repo-URLs ein.
+# Option B (Internet): nutze die offiziellen Ubuntu Repos.
+#
+# WICHTIG:
+# - Suite muss focal/focal-* sein (nicht noble/jammy/...)
+# - Komponenten sollten mind. main + universe enthalten.
+
+# OFFIZIELL (Beispiel):
+# deb https://archive.ubuntu.com/ubuntu focal main restricted universe multiverse
+# deb https://archive.ubuntu.com/ubuntu focal-updates main restricted universe multiverse
+# deb https://security.ubuntu.com/ubuntu focal-security main restricted universe multiverse
+# deb https://archive.ubuntu.com/ubuntu focal-backports main restricted universe multiverse
+
+# INTERN (Beispiel):
+# deb https://<INTERNER-MIRROR>/ubuntu focal main restricted universe multiverse
+# deb https://<INTERNER-MIRROR>/ubuntu focal-updates main restricted universe multiverse
+# deb https://<INTERNER-MIRROR>/ubuntu focal-security main restricted universe multiverse
+# deb https://<INTERNER-MIRROR>/ubuntu focal-backports main restricted universe multiverse
