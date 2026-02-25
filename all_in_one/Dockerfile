@@ -85,18 +85,21 @@ RUN a2enmod rewrite headers env dir mime
 # Aktiviert APCu auch fuer CLI-Aufrufe; wichtig fuer `occ`.
 RUN printf '%s\n' 'apc.enable_cli=1' > /etc/php/7.4/cli/conf.d/99-apcu-cli.ini
 
-# Nextcloud wird fest versioniert im Build gezogen und geprueft.
+# Nextcloud wird fest versioniert aus lokalem Tarball eingebunden.
 # NC_VERSION kann bei Bedarf per --build-arg ueberschrieben werden.
 ARG NC_VERSION=25.0.13
 ENV NC_VERSION=${NC_VERSION}
+COPY artifacts/ /tmp/nextcloud-artifacts/
 RUN set -eux; \
-  curl -fsSLO "https://download.nextcloud.com/server/releases/nextcloud-${NC_VERSION}.tar.bz2"; \
-  curl -fsSLO "https://download.nextcloud.com/server/releases/nextcloud-${NC_VERSION}.tar.bz2.sha256"; \
-  sha256sum -c "nextcloud-${NC_VERSION}.tar.bz2.sha256"; \
-  tar -xjf "nextcloud-${NC_VERSION}.tar.bz2" -C /var/www/html/; \
+  NC_TARBALL="/tmp/nextcloud-artifacts/nextcloud-${NC_VERSION}.tar.bz2"; \
+  if [ ! -f "${NC_TARBALL}" ]; then \
+    echo "Fehlender Nextcloud-Tarball: ${NC_TARBALL}" >&2; \
+    exit 1; \
+  fi; \
+  tar -xjf "${NC_TARBALL}" -C /var/www/html/; \
   mkdir -p /var/www/html/nextcloud/data; \
   chown -R www-data:www-data /var/www/html/nextcloud; \
-  rm -f "nextcloud-${NC_VERSION}.tar.bz2" "nextcloud-${NC_VERSION}.tar.bz2.sha256"
+  rm -rf /tmp/nextcloud-artifacts
 
 # Konfigurationsverzeichnis anlegen; wird typischerweise per Bind-Mount ersetzt.
 RUN set -eux; \
