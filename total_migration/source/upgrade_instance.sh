@@ -61,6 +61,13 @@ run_occ_allow_fail() {
   fi
 }
 
+run_final_status() {
+  echo "-> occ status || true (final)"
+  docker exec -u www-data -w /var/www/html "$app_container_name" php occ status || true
+}
+
+trap run_final_status EXIT
+
 run_occ maintenance:mode --on
 run_occ upgrade
 run_occ maintenance:mode --off
@@ -68,6 +75,5 @@ run_occ db:add-missing-columns
 run_occ db:add-missing-indices
 run_occ db:add-missing-primary-keys
 run_occ db:convert-filecache-bigint
-run_occ_allow_fail status
 
 echo "Done."
