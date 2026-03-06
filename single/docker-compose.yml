@@ -15,13 +15,7 @@ services:
       - db
       - redis
     environment:
-      # NC_AUTO_INSTALL=0 bedeutet: kein automatischer Installerlauf.
-      - NC_AUTO_INSTALL=0
-      # Default-Credentials nur fuer lokale/temporare Nutzung.
-      - NC_ADMIN_USER=admin
-      - NC_ADMIN_PASSWORD=admin
-      # Trusted Domain fuer Browserzugriff im lokalen Setup.
-      - NC_TRUSTED_DOMAINS=localhost
+      # Migration-only: Installation wird bewusst nicht unterstuetzt.
       # Externes Datenverzeichnis fuer Nextcloud-Dateien.
       - NC_DATA_DIR=/mnt/NextCloud/data
       # Datenbankverbindung fuer Nextcloud.
