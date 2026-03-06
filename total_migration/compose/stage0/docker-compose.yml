@@ -43,6 +43,11 @@ services:
       - MYSQL_USER=${MYSQL_USER}
       - MYSQL_PASSWORD=${MYSQL_PASSWORD}
       - REDIS_HOST=${REDIS_HOST}
+      - http_proxy=${http_proxy:-}
+      - https_proxy=${https_proxy:-}
+      - HTTP_PROXY=${HTTP_PROXY:-}
+      - HTTPS_PROXY=${HTTPS_PROXY:-}
+      - NO_PROXY=${NO_PROXY:-}
     networks:
       - nextcloud_net
 
