@@ -52,15 +52,17 @@ fi
 
 run_occ() {
   echo "-> occ --no-interaction $* (auto-yes)"
+  set +o pipefail
   yes | docker exec -i -u www-data -w /var/www/html "$app_container_name" php occ --no-interaction "$@"
+  local docker_exit_code="${PIPESTATUS[1]}"
+  set -o pipefail
+  return "$docker_exit_code"
 }
 
 run_final_status() {
   echo "-> occ --no-interaction status || true (final)"
   docker exec -u www-data -w /var/www/html "$app_container_name" php occ --no-interaction status || true
 }
-
-trap run_final_status EXIT
 
 run_occ maintenance:mode --on
 run_occ upgrade
@@ -69,5 +71,7 @@ run_occ db:add-missing-columns
 run_occ db:add-missing-indices
 run_occ db:add-missing-primary-keys
 run_occ db:convert-filecache-bigint
+
+run_final_status
 
 echo "Done."
