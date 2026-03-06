@@ -8,9 +8,9 @@ Usage:
 
 Description:
   Runs app maintenance via docker exec + php occ as user www-data:
-    1) disable + remove: calender, gallery, bruteforce_protection
+    1) disable + remove: calendar, gallery, bruteforce_protection
     2) disable only: files_antivirus
-    3) install + enable: calender
+    3) install + enable: calendar
 EOF
 }
 
@@ -56,9 +56,9 @@ run_occ_allow_fail() {
 }
 
 apps_disable_remove=(
-  "calender"
+  "calendar"
   "gallery"
-  "bruteforce_protection"
+  "brute_force_protection"
 )
 
 for app_id in "${apps_disable_remove[@]}"; do
@@ -73,11 +73,11 @@ echo "Processing app (disable only): files_antivirus"
 run_occ_allow_fail app:disable files_antivirus
 
 echo
-echo "Re-installing and enabling app: calender"
-echo "-> occ app:install calender"
-occ_exec app:install calender
-echo "-> occ app:enable calender"
-occ_exec app:enable calender
+echo "Re-installing and enabling app: calendar"
+echo "-> occ app:install calendar"
+occ_exec app:install calendar
+echo "-> occ app:enable calendar"
+occ_exec app:enable calendar
 
 echo
 echo "Done."
