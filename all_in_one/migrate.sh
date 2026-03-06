@@ -74,10 +74,10 @@ run_occ maintenance:mode --off
 
 # Standard-DB-Nacharbeiten fuer typische Migrationsinkonsistenzen.
 log "Running database maintenance commands (non-interactive)"
-run_occ db:convert-filecache-bigint
 run_occ db:add-missing-columns
 run_occ db:add-missing-indices
 run_occ db:add-missing-primary-keys
+run_occ db:convert-filecache-bigint
 
 # Aktualisiert alle installierten Apps auf kompatible Versionen.
 log "Updating apps (non-interactive)"
