@@ -14,10 +14,13 @@ ENV DEBIAN_FRONTEND=noninteractive
 # - PHP 7.4 + Nextcloud-relevante Extensions
 # - Basis-Tools zum Downloaden, Entpacken und Verifizieren von Releases
 # Hinweis: PHP 7.4 ist fuer Nextcloud 25 passend, aber generell veraltet.
+# Hinweis: SMB/CIFS wird hier ueber das smbclient-Binary abgedeckt, da php-smbclient
+# in Ubuntu 20.04 Standard-Repos nicht verfuegbar ist.
 RUN apt-get update && apt-get install -y --no-install-recommends \
     ca-certificates \
     curl \
     apache2 \
+    php7.4 \
     libapache2-mod-php7.4 \
     php7.4-cli \
     php7.4-common \
@@ -37,9 +40,19 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     php7.4-sqlite3 \
     php7.4-bz2 \
     php7.4-intl \
+    php7.4-gmp \
+    php7.4-bcmath \
+    php7.4-ldap \
+    php7.4-imap \
+    php7.4-ftp \
+    php7.4-exif \
+    php-imagick \
+    php-apcu \
+    php-redis \
     libxml2 \
     zlib1g \
     bzip2 \
+    smbclient \
     unzip \
     && rm -rf /var/lib/apt/lists/*
 
@@ -70,7 +83,7 @@ RUN set -eux; \
 # - feste Version per Build-Argument
 # - SHA256-Pruefung vor dem Entpacken
 # - Initiales Datenverzeichnis und Dateirechte vorbereiten
-ARG NC_VERSION=25.0.0
+ARG NC_VERSION=25.0.13
 ENV NC_VERSION=${NC_VERSION}
 RUN set -eux; \
     curl -fsSLO "https://download.nextcloud.com/server/releases/nextcloud-${NC_VERSION}.tar.bz2"; \
@@ -91,9 +104,11 @@ RUN set -eux; \
     rm -rf /var/www/html/nextcloud/config; \
     ln -s /mnt/NextCloud/config /var/www/html/nextcloud/config
 
-# Entry-Skript fuer Initialisierung (u. a. optionales SQLite-Setup).
+# Entry-Skript fuer Migrations-Initialisierung.
 COPY entrypoint.sh /entrypoint.sh
+COPY entrypoint.d /entrypoint.d
 RUN chmod +x /entrypoint.sh \
+    && chmod +x /entrypoint.d/*.sh \
     && printf '%s\n' '#!/usr/bin/env bash' 'exec php /var/www/html/nextcloud/occ "$@"' > /usr/local/bin/occ \
     && chmod +x /usr/local/bin/occ
 
