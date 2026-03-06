@@ -7,7 +7,8 @@ Usage:
   $(basename "$0") /path/to/.env
 
 Description:
-  Runs Nextcloud OCC commands in this exact order via docker exec as user www-data:
+  Runs Nextcloud OCC commands in this exact order via docker exec as user www-data.
+  All commands run non-interactive and auto-confirm prompts with "yes":
     1) maintenance:mode --on
     2) upgrade
     3) maintenance:mode --off
@@ -50,20 +51,13 @@ if ! docker ps --format '{{.Names}}' | grep -Fxq "$app_container_name"; then
 fi
 
 run_occ() {
-  echo "-> occ $*"
-  docker exec -u www-data -w /var/www/html "$app_container_name" php occ "$@"
-}
-
-run_occ_allow_fail() {
-  echo "-> occ $* (errors ignored)"
-  if ! docker exec -u www-data -w /var/www/html "$app_container_name" php occ "$@"; then
-    echo "WARN: occ $* failed, continuing as requested."
-  fi
+  echo "-> occ --no-interaction $* (auto-yes)"
+  yes | docker exec -i -u www-data -w /var/www/html "$app_container_name" php occ --no-interaction "$@"
 }
 
 run_final_status() {
-  echo "-> occ status || true (final)"
-  docker exec -u www-data -w /var/www/html "$app_container_name" php occ status || true
+  echo "-> occ --no-interaction status || true (final)"
+  docker exec -u www-data -w /var/www/html "$app_container_name" php occ --no-interaction status || true
 }
 
 trap run_final_status EXIT
