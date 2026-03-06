@@ -61,7 +61,7 @@ services:
       - nextcloud_net
 
   cron:
-    image: nextcloud:${NEXTCLOUD_VERSION}
+    image: nextcloud:26.0.13-apache
     container_name: ${NEXTCLOUD_CRON_CONTAINER_NAME:-nextcloud-cron}
     restart: always
     depends_on:
