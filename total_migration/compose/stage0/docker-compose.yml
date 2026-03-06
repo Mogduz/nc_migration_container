@@ -28,7 +28,7 @@ services:
       - nextcloud_net
 
   app:
-    image: nextcloud:${NEXTCLOUD_VERSION}
+    image: nextcloud:25.0.13-apache
     container_name: ${NEXTCLOUD_APP_CONTAINER_NAME:-nextcloud-app}
     restart: always
     ports:
