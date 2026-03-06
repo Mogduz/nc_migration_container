@@ -5,9 +5,6 @@ services:
       args:
         APT_PROFILE: ${APT_PROFILE:-normal}
     container_name: nc_migration_all_in_one
-    ports:
-      - "${PORT}:80"
-      - "6379:6379"
     environment:
       MYSQL_DATABASE: ${MYSQL_DATABASE}
       MYSQL_USER: ${MYSQL_USER}
