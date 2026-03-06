@@ -46,10 +46,6 @@ services:
       - type: bind
         source: ${NEXTCLOUD_DATA_MOUNT_PATH:-./data}
         target: ${NEXTCLOUD_FILES_CONTAINER_PATH:-/var/www/html/data}
-      - type: bind
-        source: ${NEXTCLOUD_VERSION_FILE_MOUNT_PATH:-./version.php}
-        target: /var/www/html/version.php
-        read_only: true
     environment:
       - MYSQL_HOST=${MYSQL_HOST}
       - MYSQL_DATABASE=${MYSQL_DATABASE}
@@ -80,10 +76,6 @@ services:
       - type: bind
         source: ${NEXTCLOUD_DATA_MOUNT_PATH:-./data}
         target: ${NEXTCLOUD_FILES_CONTAINER_PATH:-/var/www/html/data}
-      - type: bind
-        source: ${NEXTCLOUD_VERSION_FILE_MOUNT_PATH:-./version.php}
-        target: /var/www/html/version.php
-        read_only: true
     entrypoint: /cron.sh
     networks:
       - nextcloud_net
