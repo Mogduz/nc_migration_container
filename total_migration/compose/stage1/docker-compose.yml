@@ -45,7 +45,7 @@ services:
         target: /var/www/html/custom_apps
       - type: bind
         source: ${NEXTCLOUD_DATA_MOUNT_PATH:-./data}
-        target: /var/www/html/data
+        target: ${NEXTCLOUD_FILES_CONTAINER_PATH:-/var/www/html/data}
       - type: bind
         source: ${NEXTCLOUD_VERSION_FILE_MOUNT_PATH:-./version.php}
         target: /var/www/html/version.php
@@ -79,7 +79,7 @@ services:
         target: /var/www/html/custom_apps
       - type: bind
         source: ${NEXTCLOUD_DATA_MOUNT_PATH:-./data}
-        target: /var/www/html/data
+        target: ${NEXTCLOUD_FILES_CONTAINER_PATH:-/var/www/html/data}
       - type: bind
         source: ${NEXTCLOUD_VERSION_FILE_MOUNT_PATH:-./version.php}
         target: /var/www/html/version.php
