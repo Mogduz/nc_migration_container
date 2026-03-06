@@ -99,6 +99,7 @@ mysql_password="${MYSQL_PASSWORD:-}"
 mysql_root_password="${MYSQL_ROOT_PASSWORD:-}"
 db_dump_path="${DB_DUMP_PATH:-}"
 mysql_wait_timeout="${MYSQL_WAIT_TIMEOUT_SECONDS:-120}"
+mysql_host_in_container="127.0.0.1"
 
 # CRLF aus Windows-.env entfernen, damit Credentials nicht verfälscht werden.
 db_container_name="${db_container_name%$'\r'}"
@@ -129,6 +130,22 @@ if ! docker ps --format '{{.Names}}' | grep -Fxq "$db_container_name"; then
   fail "Container läuft nicht: $db_container_name"
 fi
 
+mysql_root() {
+  docker exec -e MYSQL_PWD="$mysql_root_password" "$db_container_name" mysql -h"$mysql_host_in_container" -uroot "$@"
+}
+
+mysql_root_i() {
+  docker exec -i -e MYSQL_PWD="$mysql_root_password" "$db_container_name" mysql -h"$mysql_host_in_container" -uroot "$@"
+}
+
+mysql_user_exec() {
+  docker exec -e MYSQL_PWD="$mysql_password" "$db_container_name" mysql -h"$mysql_host_in_container" -u"$mysql_user" "$@"
+}
+
+mysql_user_exec_i() {
+  docker exec -i -e MYSQL_PWD="$mysql_password" "$db_container_name" mysql -h"$mysql_host_in_container" -u"$mysql_user" "$@"
+}
+
 dump_size_bytes="$(wc -c < "$db_dump_abs" | tr -d ' ')"
 dump_size_human="$(human_bytes "$dump_size_bytes")"
 if [[ "$db_dump_abs" == *.gz ]]; then
@@ -155,8 +172,7 @@ sql_escape_literal() {
 
 section "PHASE 1/4 - MYSQL READINESS"
 for ((i = 1; i <= mysql_wait_timeout; i++)); do
-  if docker exec -e MYSQL_PWD="$mysql_root_password" "$db_container_name" \
-    mysqladmin ping -h127.0.0.1 -uroot --silent >/dev/null 2>&1; then
+  if mysql_root -Nse "SELECT 1;" >/dev/null 2>&1; then
     log "OK" "MySQL ist bereit (nach ${i}s)."
     break
   fi
@@ -178,8 +194,7 @@ mysql_password_sql="$(sql_escape_literal "$mysql_password")"
 
 section "PHASE 2/4 - ROOT/USER/DB VORBEREITUNG"
 log "INFO" "Setze Root-Accounts (localhost + %), App-User und Rechte..."
-docker exec -i -e MYSQL_PWD="$mysql_root_password" "$db_container_name" \
-  mysql -h127.0.0.1 -uroot <<SQL
+mysql_root_i <<SQL
 CREATE USER IF NOT EXISTS 'root'@'localhost' IDENTIFIED BY '${root_password_sql}';
 ALTER USER 'root'@'localhost' IDENTIFIED BY '${root_password_sql}';
 CREATE USER IF NOT EXISTS 'root'@'%' IDENTIFIED BY '${root_password_sql}';
@@ -201,8 +216,7 @@ SQL
 log "OK" "Benutzer, Datenbank und Rechte wurden vorbereitet."
 
 log "INFO" "Prüfe Login mit App-User..."
-docker exec -e MYSQL_PWD="$mysql_password" "$db_container_name" \
-  mysql -h127.0.0.1 -u"$mysql_user" -D "$mysql_database" -Nse "SELECT 'app-user-login-ok';" >/dev/null
+mysql_user_exec -D "$mysql_database" -Nse "SELECT 'app-user-login-ok';" >/dev/null
 log "OK" "App-User kann sich an der Ziel-Datenbank anmelden."
 
 section "PHASE 3/4 - DUMP IMPORT"
@@ -211,35 +225,27 @@ if [[ "$db_dump_abs" == *.gz ]]; then
   command -v gzip >/dev/null 2>&1 || fail "gzip wurde nicht gefunden, aber Dump ist .gz"
   if command -v pv >/dev/null 2>&1; then
     log "INFO" "Fortschrittsanzeige aktiviert (pv)."
-    gzip -dc "$db_dump_abs" | pv -ptebar -N "SQL-Stream" | docker exec -e MYSQL_PWD="$mysql_password" -i "$db_container_name" \
-      mysql -h127.0.0.1 -u"$mysql_user" "$mysql_database"
+    gzip -dc "$db_dump_abs" | pv -ptebar -N "SQL-Stream" | mysql_user_exec_i "$mysql_database"
   else
     log "INFO" "Hinweis: 'pv' nicht gefunden, Import läuft ohne Live-Fortschrittsbalken."
-    gzip -dc "$db_dump_abs" | docker exec -e MYSQL_PWD="$mysql_password" -i "$db_container_name" \
-      mysql -h127.0.0.1 -u"$mysql_user" "$mysql_database"
+    gzip -dc "$db_dump_abs" | mysql_user_exec_i "$mysql_database"
   fi
 else
   if command -v pv >/dev/null 2>&1; then
     log "INFO" "Fortschrittsanzeige aktiviert (pv)."
-    pv -ptebar "$db_dump_abs" | docker exec -e MYSQL_PWD="$mysql_password" -i "$db_container_name" \
-      mysql -h127.0.0.1 -u"$mysql_user" "$mysql_database"
+    pv -ptebar "$db_dump_abs" | mysql_user_exec_i "$mysql_database"
   else
     log "INFO" "Hinweis: 'pv' nicht gefunden, Import läuft ohne Live-Fortschrittsbalken."
-    cat "$db_dump_abs" | docker exec -e MYSQL_PWD="$mysql_password" -i "$db_container_name" \
-      mysql -h127.0.0.1 -u"$mysql_user" "$mysql_database"
+    cat "$db_dump_abs" | mysql_user_exec_i "$mysql_database"
   fi
 fi
 log "OK" "Dump-Import abgeschlossen."
 
 section "PHASE 4/4 - IMPORT REPORT"
-table_count_root="$(docker exec -e MYSQL_PWD="$mysql_root_password" "$db_container_name" \
-  mysql -h127.0.0.1 -uroot -Nse "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema='${mysql_database}';")"
-table_count_user="$(docker exec -e MYSQL_PWD="$mysql_password" "$db_container_name" \
-  mysql -h127.0.0.1 -u"$mysql_user" -Nse "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema='${mysql_database}';")"
-db_size_mib="$(docker exec -e MYSQL_PWD="$mysql_root_password" "$db_container_name" \
-  mysql -h127.0.0.1 -uroot -Nse "SELECT IFNULL(ROUND(SUM(data_length + index_length)/1024/1024,2),0) FROM information_schema.tables WHERE table_schema='${mysql_database}';")"
-non_empty_tables="$(docker exec -e MYSQL_PWD="$mysql_root_password" "$db_container_name" \
-  mysql -h127.0.0.1 -uroot -Nse "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema='${mysql_database}' AND (data_length > 0 OR index_length > 0 OR table_rows > 0);")"
+table_count_root="$(mysql_root -Nse "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema='${mysql_database}';")"
+table_count_user="$(mysql_user_exec -Nse "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema='${mysql_database}';")"
+db_size_mib="$(mysql_root -Nse "SELECT IFNULL(ROUND(SUM(data_length + index_length)/1024/1024,2),0) FROM information_schema.tables WHERE table_schema='${mysql_database}';")"
+non_empty_tables="$(mysql_root -Nse "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema='${mysql_database}' AND (data_length > 0 OR index_length > 0 OR table_rows > 0);")"
 
 log "INFO" "Tabellen (Root-Sicht):   $table_count_root"
 log "INFO" "Tabellen (User-Sicht):   $table_count_user"
@@ -259,8 +265,7 @@ else
 fi
 
 log "INFO" "Top 10 Tabellen nach Speicherbedarf (table_rows ist bei InnoDB geschaetzt):"
-docker exec -e MYSQL_PWD="$mysql_root_password" "$db_container_name" \
-  mysql -h127.0.0.1 -uroot --table -e "
+mysql_root --table -e "
 SELECT
   table_name AS tabelle,
   table_rows AS geschaetzte_zeilen,
