@@ -132,4 +132,4 @@ Im kopierten Config Ordner müssen folgende Werte geändert werden:
    - 'docker compose -f ./compose/stage<StageNummer>/docker-compose.yml --env-file <pfad zur env Datei> rm cron -f'
    - Danach muss die Stage gestarted werden 'docker compose -f ./compose/stage<StageNummer>/docker-compose.yml --env-file <pfad zur env Datei> up -d'
    - Wenn der Apache sich gemeldet wieder das upgrade_instance.sh script ausführen 'bash ./source/upgrade_instance.sh <pfad zu env Datei>'
-   - Die vorherigen Punke aus Nummer 5 für die Stages 2 - 9 wiederholen. Danach ist die Version der Nextcloud 33.0.0
+   - Die vorherigen Punke aus Nummer 5 für die Stages 2 - 9 wiederholen. Danach ist die Version der Nextcloud 33.0.0 (Stage9 kann auch für den Normalen Betrieb verwendet werden)
