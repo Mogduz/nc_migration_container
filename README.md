@@ -1,135 +1,166 @@
-# nc_migration_container
+﻿# nc_migration_container
 
-Docker-Compose-Setup fuer eine stufenweise Migration von `ownCloud 10.16.x` auf `Nextcloud 33.0.0`.
+Docker-Compose-Setup fuer die stufenweise Migration von `ownCloud 10.16.x` nach `Nextcloud 33.0.0`.
 
-Die produktive Migration erfolgt ueber `stage1` bis `stage9`. Pro Stage wird ein Compose-File mit einer festen Nextcloud-Version genutzt. Daten, Konfiguration und Custom Apps bleiben ueber Bind-Mounts persistent. `stage0` ist ein Dummy/Test-Setup und nicht Teil des eigentlichen Migrationspfads.
+Der produktive Migrationspfad ist `stage1` bis `stage9`.
+`stage0` ist nur ein Dummy/Test-Setup.
 
 ## Ziel
 
-1. Eine bestehende ownCloud-`10.16.x`-Instanz kontrolliert in Nextcloud ueberfuehren.
-2. Datenbank-Dump kontrolliert importieren.
-3. Versionsspruenge mit `occ upgrade` pro Stage (`stage1` bis `stage9`) ausfuehren.
-4. Am Ende auf Nextcloud `33.0.0` landen.
+1. Bestehende ownCloud-`10.16.x`-Instanz uebernehmen.
+2. Datenbank-Dump kontrolliert in MySQL 8 importieren.
+3. Pro Stage `occ upgrade` ausfuehren.
+4. Zielversion `Nextcloud 33.0.0` erreichen.
 
 ## Projektstruktur
 
 - `compose/stage0` bis `compose/stage9`: Compose-Dateien pro Migrationsstufe
-- `compose/stage1/files/versions.php`: Stage-1-Version-Datei (`25.0.13`)
-- `source/import_db_dump.sh`: DB-Import mit Readiness-Check und Report
-- `source/upgrade_instance.sh`: `occ`-Upgradeablauf
-- `source/migrate_apps_stage1.sh`: App-Migration fuer Stage 1
-- `source/copy_stage1_version_php.sh`: Kopiert `version.php` fuer Stage 1
-- `.env.example`: Vorlage fuer alle Umgebungsvariablen
+- `compose/stage1/files/versions.php`: Angepasste Version-Datei fuer Stage 1
+- `source/import_db_dump.sh`: DB-Import mit Checks und Report
+- `source/upgrade_instance.sh`: OCC-Upgrade-Schritte
+- `source/migrate_apps_stage1.sh`: App-Migration in Stage 1
+- `source/copy_stage1_version_php.sh`: Kopiert `version.php` in den Container
+- `.env.example`: Vorlage fuer alle benoetigten Variablen
 
 ## Stage-Matrix
 
-| Stage | Nextcloud-Image |
-| --- | --- |
-| 0 | `nextcloud:25.0.13-apache` (Dummy/Test-Setup) |
-| 1 | `nextcloud:25.0.13-apache` |
-| 2 | `nextcloud:26.0.13-apache` |
-| 3 | `nextcloud:27.1.2-apache` |
-| 4 | `nextcloud:28.0.14-apache` |
-| 5 | `nextcloud:29.0.16-apache` |
-| 6 | `nextcloud:30.0.16-apache` |
-| 7 | `nextcloud:31.0.14-apache` |
-| 8 | `nextcloud:32.0.6-apache` |
-| 9 | `nextcloud:33.0.0-apache` |
-
-Hinweis: Der eigentliche Migrationspfad ist `stage1` bis `stage9`.
+| Stage | Nextcloud-Image | Zweck |
+| --- | --- | --- |
+| 0 | `nextcloud:25.0.13-apache` | Dummy/Test |
+| 1 | `nextcloud:25.0.13-apache` | Start der produktiven Migration |
+| 2 | `nextcloud:26.0.13-apache` | Upgrade |
+| 3 | `nextcloud:27.1.2-apache` | Upgrade |
+| 4 | `nextcloud:28.0.14-apache` | Upgrade |
+| 5 | `nextcloud:29.0.16-apache` | Upgrade |
+| 6 | `nextcloud:30.0.16-apache` | Upgrade |
+| 7 | `nextcloud:31.0.14-apache` | Upgrade |
+| 8 | `nextcloud:32.0.6-apache` | Upgrade |
+| 9 | `nextcloud:33.0.0-apache` | Zielversion / Betrieb moeglich |
 
 ## Voraussetzungen
 
 - Docker Engine + Docker Compose Plugin (`docker compose`)
 - Bash-Shell (Linux/macOS, WSL oder Git-Bash unter Windows)
-- Optional: `pv` fuer Import-Fortschrittsanzeige
-- Optional: `gzip` bei `.gz`-Dumps
+- Optional: `pv` fuer Fortschrittsanzeige beim Import
+- Optional: `gzip` bei `.sql.gz`-Dump
 
-## Ablauf
+## Vorbereitung an der Quellinstanz
 
-### Vorbereitung
+1. Externe Apps (`apps-external`) deaktivieren, z. B. mit:
+   `occ app:disable <appname>`
+2. Maintenance Mode einschalten:
+   `occ maintenance:mode --on`
+3. Datenverzeichnisse kopieren (`data`, `config`, `apps-external`).
+4. DB-Dump erstellen.
+5. Berechtigungen pruefen: `data`, `config`, `apps-external` gehoeren `www-data:www-data`.
+6. `.env` aus Vorlage erstellen:
 
-- Alle Apps die im Verzeichniss apps-external liegen per webInterface oder occ Befehl 'occ app:disable <appname>' deaktivieren
-- Instanz in den Maintance Mode versetzen 'occ maintancemode --on'
-- Alle Daten (samt config Dateien und External-Apps) kopieren
-- Datenank Dump erstellen
-- Berechtigungen anpasssen - Die Ordner data, config, apps-external müssen dem user und der Gruppe www-data gehören
-- .env.example kopieren
+```bash
+cp .env.example .env
+```
 
-### Anpassung .env
+## `.env` anpassen
 
-Die folgenden Variablen müssen angepasst werden!
+Pflichtwerte:
 
-- MYSQL_DATABASE (zu finden in der instanz config.php)
-- MYSQL_USER (zu finden in der instanz config.php)
-- MYSQL_PASSWORD (zu finden in der instanz config.php)
-- DB_DUMP_PATH (Pfad zur zuvor erstellten Dump Datei - am besten absolut)
-- DB_MOUNT_PATH (Pfad an dem die Daten des Mysql 8 Containers ausgemountet werden. Dieser Pfad sollte am besten in das Verzeichniss mit gelegt werden in dem auch die Kopierten Daten liegen)
-- REDIS_MOUNT_PATH (Pfad an dem die redis Daten ausgelagert werden)
-- NEXTCLOUD_CONFIG_MOUNT_PATH (Pfad von dem aus die Config in den Container gemounted wird.)
-- NEXTCLOUD_APPS_EXTERNAL_MOUNT_PATH (Pfad von dem aus die externen Apps in den Container gemounted werden)
-- NEXTCLOUD_DATA_MOUNT_PATH (Datenverzeichniss der Instanz welches in den container gemounted wird)
-- NEXTCLOUD_FILES_CONTAINER_PATH (!!WICHTIG!!: Diese Variable bestimmt den Pfad an dem das Datenverzeichniss in den Container gemounted wird. Der Pfad ist in der Instanz config.php zu finden und muss hier genauso eingetragen werden. Sonst funktioniert es nicht oder die Pfade müssen in der Datenbank geändert werden)
-  
-### Anpassung Instanz Config
+- `MYSQL_DATABASE` (aus `config.php`)
+- `MYSQL_USER` (aus `config.php`)
+- `MYSQL_PASSWORD` (aus `config.php`)
+- `DB_DUMP_PATH` (Pfad zum Dump, ideal absolut)
+- `DB_MOUNT_PATH` (muss gesetzt sein, damit die MySQL-Daten persistent bleiben)
+- `REDIS_MOUNT_PATH` (muss gesetzt sein, damit Redis-Daten persistent bleiben)
+- `NEXTCLOUD_CONFIG_MOUNT_PATH`
+- `NEXTCLOUD_APPS_EXTERNAL_MOUNT_PATH`
+- `NEXTCLOUD_DATA_MOUNT_PATH`
+- `NEXTCLOUD_FILES_CONTAINER_PATH` (muss exakt zum Pfad aus `config.php` passen)
 
-Im kopierten Config Ordner müssen folgende Werte geändert werden:
+Hinweis zu Pfaden in `.env`:
 
-#### 'apps_path'
+- Relative Pfade (z. B. `./db`) werden relativ zur jeweils verwendeten `docker-compose.yml` aufgeloest.
 
-- array eintrag 0 path: /var/www/html/apps
-- array eintrag 1 path: /var/www/html/custom_apps, url: custom_apps
+## `config.php` anpassen
 
-#### 'appstoreenabled'
+Im kopierten Config-Ordner diese Werte setzen:
 
-- Den Wert für die Migration auf true setzen (Kann danach wieder deaktiviert werden)
+| Key | Sollwert |
+| --- | --- |
+| `apps_path[0]['path']` | `/var/www/html/apps` |
+| `apps_path[1]['path']` | `/var/www/html/custom_apps` |
+| `apps_path[1]['url']` | `custom_apps` |
+| `appstoreenabled` | `true` (fuer Migration, danach optional wieder `false`) |
+| `redis['host']` | `redis` |
+| `cache_path` | `/var/www/html/tmp` |
+| `dav.chunk_base_dir` | `/var/www/html/tmp` |
+| `dbhost` | `db:3306` |
 
-#### 'redis'
+Wichtige Zusatzhinweise:
 
-- Im Array den Host Wert auf 'redis' setzen. Dies ist damit der nC Container den redis Container findet
+- Wenn Config-Snippets genutzt werden, muessen Werte dort angepasst werden, nicht nur in `config.php`.
+- Wenn Maintenance Mode per Snippet erzwungen wird, Snippet fuer Migration deaktivieren (`.bak`), da `occ` nur `config.php` aendert.
 
-#### 'cache_path'
+## Migration (Stage 1 bis Stage 9)
 
-- Den Pfad auf '/var/www/html/tmp' ändern (Wichtig: Wenn nicht geändert funktioniert zwar die nextCloud aber die external Apps funktioneren dann nicht mehr.)
+Setze zuerst eine Variable fuer deine Env-Datei:
 
-#### 'dav.chunk_base_dir'
+```bash
+ENV_FILE=./.env
+```
 
-- Den Pfad auf '/var/www/html/tmp' ändern
+### 1) Nur Datenbank in Stage 1 starten
 
-#### 'dbhost'
+```bash
+docker compose -f ./compose/stage1/docker-compose.yml --env-file "$ENV_FILE" up db -d
+docker ps
+```
 
-- Für die Migration und den weiteren Betrieb im Container den Wert auf 'db:3306' Wichtig: Der Port muss auch mit geändert werden!
+### 2) Dump importieren
 
-#### Wichtig sollte die Config in Snippets augeteilt sein so müssen die Werte in den Snippets geändert werden da diese die config.php überschreiben
+```bash
+bash ./source/import_db_dump.sh "$ENV_FILE"
+```
 
-#### Sollte der Maintance Mode über ein snippet gesteuert werden so muss dieses Snippet enfernt oder mit suffix .bak versehen werden da während der Migration den Maintance Mode per occ Befehl mehrmals aktiviert und deaktiviert wird. Ein occ Behfehl manipuliert aber immer nur die config.php und niemals ein snippet. Daher bitte deaktivieren
+### 3) Stage 1 vollstaendig starten
 
-### Migration
+```bash
+docker compose -f ./compose/stage1/docker-compose.yml --env-file "$ENV_FILE" down
+docker compose -f ./compose/stage1/docker-compose.yml --env-file "$ENV_FILE" up -d
+docker compose -f ./compose/stage1/docker-compose.yml --env-file "$ENV_FILE" logs -f
+```
 
-1. starten der Datenbank
-   - im repo root 'docker compose -f ./compose/stage1/docker-compose.yml --env-file <pfad zur env Datei> up db -d'
-   - ob die Datebank läuft kann via 'docker ps' verifiziert werden
-2. Dump importieren
-   - Für den import des Datenbank Dumps soll das Script 'import_db_dump.sh' im source Ordner verwendet werden.
-   - Dem Script muss die Pfad zu env Datei übergeben werden. Nach dem Start lies dieses selbständig die env aus importiert automatisch den Dump in den Container
-   - 'bash ./source/import_db_dump.sh <pfad zur env Datei>'
-3. Datenbank stoppen
-   - Nach erfolgreichem import die Datenbank stoppen mit 'docker compose -f ./compose/stage1/docker-compose.yml --env-file <pfad zur env Datei> down'
-4. Stage1
-   - komplette stage1 starten mit 'docker compose -f ./compose/stage1/docker-compose.yml --env-file <pfad zur env Datei> up -d'
-   - Nach dem Start mit 'docker compose -f ./compose/stage1/docker-compose.yml --env-file <pfad zur env Datei> logs -f' dem Logoutput der Container folgen.
-   - Warten bis der Apache sich meldet und die Intialisierung des Containers fertig (Kann bei großen Instanzen länger dauern)
-   - Danach das script copy_stage1_version_php.sh ausführen. Dieses Script benötigt auch die env Datei als Argument und kopiert automatisch eine angepasse version.php an den richtigen Ort im Caontainer. (Wird benötigt da nC standartmäßig in dieser version Nur Instanzen migriren lässt die in der Version 10.13.x sind).
-   - 'bash ./source/copy_stage1_version_php.sh <pfad zu env Datei>'
-   - Danach die eigentlich Migration via 'bash ./source/upgrade_instance.sh <pfad zu env Datei>' ausführen. (Dies kann mehrere Minuten in anspruch nehmen)
-   - Nach der Migration müssen noch die Apps migriert werden. 'bash ./source/migrate_apps_stage1.sh <pfad zu env Datei>'
-   - Danach ist die Instanz vollständig auf Nextcloud 25.0.13 migriert
-5. Stage2 - Stage9
-   - Die folgenden Stages sind im Ablauf alle gleich.
-   - Es muss immer die vorherige Stage gestoppt werden.
-   - Es müssen zwingend die container 'app' und 'cron' aus dem Compose gelöscht werden.
-   - 'docker compose -f ./compose/stage<StageNummer>/docker-compose.yml --env-file <pfad zur env Datei> rm app -f'
-   - 'docker compose -f ./compose/stage<StageNummer>/docker-compose.yml --env-file <pfad zur env Datei> rm cron -f'
-   - Danach muss die Stage gestarted werden 'docker compose -f ./compose/stage<StageNummer>/docker-compose.yml --env-file <pfad zur env Datei> up -d'
-   - Wenn der Apache sich gemeldet wieder das upgrade_instance.sh script ausführen 'bash ./source/upgrade_instance.sh <pfad zu env Datei>'
-   - Die vorherigen Punke aus Nummer 5 für die Stages 2 - 9 wiederholen. Danach ist die Version der Nextcloud 33.0.0 (Stage9 kann auch für den Normalen Betrieb verwendet werden)
+Warte, bis Apache gestartet ist und die Initialisierung abgeschlossen wurde.
+
+Dann ausfuehren:
+
+```bash
+bash ./source/copy_stage1_version_php.sh "$ENV_FILE"
+bash ./source/upgrade_instance.sh "$ENV_FILE"
+bash ./source/migrate_apps_stage1.sh "$ENV_FILE"
+```
+
+Danach ist die Instanz auf Nextcloud `25.0.13`.
+
+### 4) Stage 2 bis Stage 9 (pro Stage wiederholen)
+
+Beispiel fuer eine Zielstage:
+
+```bash
+STAGE=2
+PREV_STAGE=$((STAGE - 1))
+
+docker compose -f ./compose/stage${PREV_STAGE}/docker-compose.yml --env-file "$ENV_FILE" down
+docker compose -f ./compose/stage${PREV_STAGE}/docker-compose.yml --env-file "$ENV_FILE" rm app -f
+docker compose -f ./compose/stage${PREV_STAGE}/docker-compose.yml --env-file "$ENV_FILE" rm cron -f
+
+docker compose -f ./compose/stage${STAGE}/docker-compose.yml --env-file "$ENV_FILE" up -d
+docker compose -f ./compose/stage${STAGE}/docker-compose.yml --env-file "$ENV_FILE" logs -f
+bash ./source/upgrade_instance.sh "$ENV_FILE"
+```
+
+Diese Sequenz fuer `STAGE=2` bis `STAGE=9` wiederholen.
+
+## Hinweise
+
+- Ausgangsbasis ist `ownCloud 10.16.x`.
+- `NEXTCLOUD_HTML_MOUNT_PATH` wird nur in `stage0` verwendet.
+- Ab `stage1` werden `config`, `custom_apps` und `data` separat gemountet.
+- `stage9` kann fuer den dauerhaften Betrieb verwendet werden.
