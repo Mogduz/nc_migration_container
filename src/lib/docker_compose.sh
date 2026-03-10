@@ -123,12 +123,50 @@ run_container_command_as_user() {
     return 1
   fi
 
-  if docker compose --env-file "$env_file" -f "$compose_file" exec -T --user "$run_user" "$service_name" "$@"; then
+  if [ "$#" -eq 1 ]; then
+    if docker compose --env-file "$env_file" -f "$compose_file" exec -T --user "$run_user" "$service_name" sh -lc "$1"; then
+      ERROR_MESSAGE=""
+      return 0
+    fi
+  elif docker compose --env-file "$env_file" -f "$compose_file" exec -T --user "$run_user" "$service_name" "$@"; then
     ERROR_MESSAGE=""
     return 0
   fi
 
   ERROR_MESSAGE="Befehl '$*' konnte als User '$run_user' im Service '$service_name' nicht ausgefuehrt werden."
+  return 1
+}
+
+run_occ_cmd_in_container() {
+  local env_file="$1"
+  local compose_file="$2"
+  local service_name="$3"
+  local use_tty=true
+  shift 3
+
+  ERROR_FUNCTION="run_occ_cmd_in_container"
+  ERROR_MESSAGE=""
+
+  if [ "$#" -eq 0 ]; then
+    ERROR_MESSAGE="Kein OCC-Befehl fuer Service '$service_name' angegeben."
+    return 1
+  fi
+
+  if [ ! -t 0 ] || [ ! -t 1 ]; then
+    use_tty=false
+  fi
+
+  if [ "$use_tty" = "true" ]; then
+    if docker compose --env-file "$env_file" -f "$compose_file" exec --user "www-data" "$service_name" php /var/www/html/occ "$@"; then
+      ERROR_MESSAGE=""
+      return 0
+    fi
+  elif docker compose --env-file "$env_file" -f "$compose_file" exec -T --user "www-data" "$service_name" php /var/www/html/occ "$@"; then
+    ERROR_MESSAGE=""
+    return 0
+  fi
+
+  ERROR_MESSAGE="OCC-Befehl '$*' konnte im Service '$service_name' nicht als User 'www-data' ausgefuehrt werden."
   return 1
 }
 
