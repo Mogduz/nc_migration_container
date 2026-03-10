@@ -3,7 +3,7 @@ set -euo pipefail
 
 
 set_vars() {
-    wait_seconds=120
+    timeout=120
     interval_seconds=2
     current_dir="$(pwd)"
     env_file="$(make_path_absolut "$1")"
@@ -34,6 +34,24 @@ load_env() {
     set +a
 }
 
+print_loaded_env() {
+    local env_file="$1"
+    local line
+    local key
+    while IFS= read -r line; do
+        line="${line#"${line%%[![:space:]]*}"}"
+        if [ -z "$line" ] || [[ "$line" == \#* ]]; then
+            continue
+        fi
+        line="${line#export }"
+        key="${line%%=*}"
+        key="${key%"${key##*[![:space:]]}"}"
+        if [[ "$key" =~ ^[A-Za-z_][A-Za-z0-9_]*$ ]]; then
+            printf '%s=%s\n' "$key" "${!key-}"
+        fi
+    done < "$env_file"
+}
+
 import_scripts() {
     . "$current_dir/src/lib/logging.sh"
     . "$current_dir/src/lib/error.sh"
@@ -45,7 +63,7 @@ migrate_stage1() {
 
     local env_file="$1"
     local compose_file="$2"
-    local timeout="${3:-$wait_seconds}"
+    local timeout="${3:-$timeout}"
     local failed=true
     if start_single_compose_container "$env_file" "$compose_file" "db"; then
         if docker_wait_for_state "$env_file" "$compose_file" "db" "healthy" "$timeout" "$interval_seconds"; then
@@ -73,9 +91,10 @@ startup() {
     set_vars "$1"
     check_env "$env_file"
     load_env "$env_file"
+    print_loaded_env "$env_file"
     import_scripts
 
 }
 
 startup "$1"
-migrate_stage1 "$env_file" "$compose_file"
+#migrate_stage1 "$env_file" "$compose_file"
