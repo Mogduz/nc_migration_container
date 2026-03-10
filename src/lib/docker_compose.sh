@@ -17,6 +17,21 @@ start_single_compose_container() {
   return 1
 }
 
+start_compose() {
+  local env_file="$1"
+  local compose_file="$2"
+
+  ERROR_FUNCTION="start_compose"
+  ERROR_MESSAGE=""
+
+  if docker compose --env-file "$env_file" -f "$compose_file" up -d; then
+    ERROR_MESSAGE=""
+    return 0
+  fi
+  ERROR_MESSAGE="Compose mit Datei '$compose_file' und Env-Datei '$env_file' konnte nicht gestartet werden."
+  return 1
+}
+
 stop_compose() {
   local env_file="$1"
   local compose_file="$2"
@@ -29,6 +44,25 @@ stop_compose() {
     return 0
   fi
   ERROR_MESSAGE="Compose mit Datei '$compose_file' und Env-Datei '$env_file' konnte nicht gestoppt werden."
+  return 1
+}
+
+create_docker_network() {
+  local network_name="$1"
+
+  ERROR_FUNCTION="create_docker_network"
+  ERROR_MESSAGE=""
+
+  if docker network inspect "$network_name" >/dev/null 2>&1; then
+    ERROR_MESSAGE=""
+    return 0
+  fi
+
+  if docker network create "$network_name" >/dev/null 2>&1; then
+    ERROR_MESSAGE=""
+    return 0
+  fi
+  ERROR_MESSAGE="Docker-Netzwerk '$network_name' konnte nicht erstellt werden."
   return 1
 }
 
