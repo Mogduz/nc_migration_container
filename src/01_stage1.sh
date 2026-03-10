@@ -86,6 +86,21 @@ migrate_stage1() {
     fi
 }
 
+migrate_stage1_testing() {
+
+    local env_file="$1"
+    local compose_file="$2"
+    local timeout="${3:-$timeout}"
+    local failed=true
+    if start_single_compose_container "$env_file" "$compose_file" "db"; then
+        echo "container gestartet"
+    fi
+
+    if [ "$failed" = "true" ]; then
+        abort_with_error "$ERROR_MESSAGE" "$ERROR_FUNCTION"
+    fi
+}
+
 startup() {
 
     set_vars "$1"
@@ -97,4 +112,4 @@ startup() {
 }
 
 startup "$1"
-#migrate_stage1 "$env_file" "$compose_file"
+migrate_stage1_testing "$env_file" "$compose_file"
