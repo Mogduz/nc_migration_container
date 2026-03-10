@@ -95,4 +95,4 @@ services:
 networks:
   app_net:
     name: ${DOCKER_NETWORK_NAME}
-    driver: bridge
+    external: true
