@@ -97,7 +97,7 @@ prepare_migration_stage1() {
     if start_compose "$env_file" "$compose_file"; then
         if docker_wait_for_state "$env_file" "$compose_file" "db" "healthy" "$timeout" "$interval_seconds"; then
             if docker_wait_for_log_string "$env_file" "$compose_file" "nextcloud" "apache2 -D FOREGROUND"; then
-                if copy_file_to_container "$env_file" "$compose_file" "nextcloud" "$current_dir/compose/stage1/files/version.php" "/var/www/html/version.php" "www-data" "www-data"
+                if copy_file_to_container "$env_file" "$compose_file" "nextcloud" "$current_dir/compose/stage1/files/version.php" "/var/www/html/version.php" "www-data" "www-data"; then
                     return 0
                 fi
             fi
