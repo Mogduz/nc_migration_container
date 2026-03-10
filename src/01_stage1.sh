@@ -111,7 +111,8 @@ migrate_stage1() {
     if preflight_migration_stage1; then 
         if prepare_database_stage1 "$env_file" "$compose_file"; then
             if prepare_migration_stage1 "$env_file" "$compose_file"; then
-                failed=false
+                if run_container_command_as_user "$env_file" "$compose_file" "nextcloud" "www-data" "php occ upgrade"; then
+                    failed=false
             fi
         fi
     fi
