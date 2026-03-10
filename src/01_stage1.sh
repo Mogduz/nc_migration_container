@@ -93,7 +93,11 @@ migrate_stage1_testing() {
     local timeout="${3:-$timeout}"
     local failed=true
     if start_single_compose_container "$env_file" "$compose_file" "db"; then
-        echo "container gestartet"
+        if docker_wait_for_state "$env_file" "$compose_file" "db" "healthy" "$timeout" "$interval_seconds"; then
+            if configure_root_user "$env_file" "$compose_file" "db" "$MYSQL_ROOT_PASSWORD"; then
+                failed=false
+            fi
+        fi
     fi
 
     if [ "$failed" = "true" ]; then
