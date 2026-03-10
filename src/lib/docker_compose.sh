@@ -80,7 +80,7 @@ copy_file_to_container() {
   local target_file="$5"
   local target_user="$6"
   local target_group="$7"
-_
+
   ERROR_FUNCTION="copy_file_to_container"
   ERROR_MESSAGE=""
 
