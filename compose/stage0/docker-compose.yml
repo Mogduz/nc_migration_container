@@ -13,6 +13,12 @@ services:
       - MYSQL_PASSWORD=${MYSQL_PASSWORD}
       - MYSQL_DATABASE=${MYSQL_DATABASE}
       - MYSQL_USER=${MYSQL_USER}
+    healthcheck:
+      test: ["CMD-SHELL", "mysqladmin ping -h 127.0.0.1 -u root -p$${MYSQL_ROOT_PASSWORD} --silent"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 30s
     networks:
       - nextcloud_net
 
@@ -27,7 +33,7 @@ services:
     networks:
       - nextcloud_net
 
-  app:
+  nextcloud:
     image: nextcloud:25.0.13-apache
     container_name: ${NEXTCLOUD_APP_CONTAINER_NAME:-nextcloud-app}
     restart: always
@@ -51,6 +57,12 @@ services:
       - HTTP_PROXY=${HTTP_PROXY:-}
       - HTTPS_PROXY=${HTTPS_PROXY:-}
       - NO_PROXY=${NO_PROXY:-}
+    healthcheck:
+      test: ["CMD", "php", "-r", "exit(@file_get_contents('http://127.0.0.1/status.php') === false ? 1 : 0);"]
+      interval: 30s
+      timeout: 10s
+      retries: 10
+      start_period: 120s
     networks:
       - nextcloud_net
 
@@ -59,7 +71,7 @@ services:
     container_name: ${NEXTCLOUD_CRON_CONTAINER_NAME:-nextcloud-cron}
     restart: always
     depends_on:
-      - app
+      - nextcloud
     volumes:
       - type: bind
         source: ${NEXTCLOUD_HTML_MOUNT_PATH:-./nextcloud}
