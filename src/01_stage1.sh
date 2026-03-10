@@ -53,7 +53,6 @@ print_loaded_env() {
 }
 
 import_scripts() {
-    echo "$current_dir"
     . "$current_dir/src/lib/logging.sh"
     . "$current_dir/src/lib/error.sh"
     . "$current_dir/src/lib/docker_compose.sh"
