@@ -106,7 +106,7 @@ startup() {
     set_vars "$1"
     check_env "$env_file"
     load_env "$env_file"
-    print_loaded_env "$env_file"
+    #print_loaded_env "$env_file"
     import_scripts
 
 }
