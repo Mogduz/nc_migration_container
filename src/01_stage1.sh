@@ -59,6 +59,13 @@ import_scripts() {
     . "$current_dir/src/lib/mysql.sh"
 }
 
+preflight_migration_stage1() {
+    if create_docker_network "$DOCKER_NETWORK_NAME"; then
+        return 0
+    fi
+    return 1
+}
+
 prepare_database_stage1() {
     local env_file="$1"
     local compose_file="$2"
@@ -87,12 +94,10 @@ prepare_database_stage1() {
 prepare_migration_stage1() {
     local env_file="$1"
     local compose_file="$2"
-    if create_docker_network "$DOCKER_NETWORK_NAME"; then
-        if start_compose "$env_file" "$compose_file"; then
+    if start_compose "$env_file" "$compose_file"; then
+        if docker_wait_for_state "$env_file" "$compose_file" "db" "healthy" "$timeout" "$interval_seconds"; then
             if docker_wait_for_state "$env_file" "$compose_file" "db" "healthy" "$timeout" "$interval_seconds"; then
-                if docker_wait_for_state "$env_file" "$compose_file" "db" "healthy" "$timeout" "$interval_seconds"; then
-                    return 0
-                fi
+                return 0
             fi
         fi
     fi
@@ -101,12 +106,14 @@ prepare_migration_stage1() {
 
 migrate_stage1() {
     local failed=true
-    if prepare_database_stage1 "$env_file" "$compose_file"; then
-        if prepare_migration_stage1 "$env_file" "$compose_file"; then
-            failed=false
+    if preflight_migration_stage1; then 
+        if prepare_database_stage1 "$env_file" "$compose_file"; then
+            if prepare_migration_stage1 "$env_file" "$compose_file"; then
+                failed=false
+            fi
         fi
     fi
-
+    
     if [ "$failed" = "true" ]; then
         abort_with_error "$ERROR_MESSAGE" "$ERROR_FUNCTION"
     else
