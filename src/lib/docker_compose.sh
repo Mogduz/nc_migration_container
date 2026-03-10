@@ -72,6 +72,42 @@ create_docker_network() {
   return 1
 }
 
+copy_file_to_container() {
+  local env_file="$1"
+  local compose_file="$2"
+  local service_name="$3"
+  local source_file="$4"
+  local target_file="$5"
+  local target_user="$6"
+  local target_group="$7"
+_
+  ERROR_FUNCTION="copy_file_to_container"
+  ERROR_MESSAGE=""
+
+  if [ ! -f "$source_file" ]; then
+    ERROR_MESSAGE="Quelldatei '$source_file' wurde auf dem Host nicht gefunden."
+    return 1
+  fi
+
+  if ! docker compose --env-file "$env_file" -f "$compose_file" exec -T "$service_name" sh -lc 'mkdir -p "$(dirname "$1")"' -- "$target_file"; then
+    ERROR_MESSAGE="Zielverzeichnis fuer '$target_file' im Service '$service_name' konnte nicht erstellt werden."
+    return 1
+  fi
+
+  if ! docker compose --env-file "$env_file" -f "$compose_file" cp "$source_file" "$service_name:$target_file"; then
+    ERROR_MESSAGE="Datei '$source_file' konnte nicht nach '$target_file' im Service '$service_name' kopiert werden."
+    return 1
+  fi
+
+  if ! docker compose --env-file "$env_file" -f "$compose_file" exec -T "$service_name" chown "$target_user:$target_group" "$target_file"; then
+    ERROR_MESSAGE="Eigentuemer/Besitzergruppe '$target_user:$target_group' konnte fuer '$target_file' im Service '$service_name' nicht gesetzt werden."
+    return 1
+  fi
+
+  ERROR_MESSAGE=""
+  return 0
+}
+
 docker_state_running() {
   local env_file="$1"
   local compose_file="$2"
@@ -183,4 +219,36 @@ docker_wait_for_state() {
 
     sleep "$interval"
   done
+}
+
+docker_wait_for_log_string() {
+  local env_file="$1"
+  local compose_file="$2"
+  local service_name="$3"
+  local search_string="$4"
+  local timeout="${5:-300}"
+  local start_time
+  local cmd_status
+
+  ERROR_FUNCTION="docker_wait_for_log_string"
+  ERROR_MESSAGE=""
+  start_time="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+
+  timeout "${timeout}s" bash -c 'docker compose --env-file "$1" -f "$2" logs -f --since "$3" --no-color "$4" 2>&1 | grep -F -m1 -- "$5" >/dev/null' _ "$env_file" "$compose_file" "$start_time" "$service_name" "$search_string"
+  cmd_status=$?
+
+  if [ "$cmd_status" -eq 0 ]; then
+    ERROR_MESSAGE=""
+    printf 'true\n'
+    return 0
+  fi
+
+  if [ "$cmd_status" -eq 124 ]; then
+    ERROR_MESSAGE="String '$search_string' wurde innerhalb von ${timeout}s in den Logs von Service '$service_name' nicht gefunden."
+  else
+    ERROR_MESSAGE="Logs von Service '$service_name' konnten nicht ausgewertet werden."
+  fi
+
+  printf 'false\n'
+  return 0
 }
