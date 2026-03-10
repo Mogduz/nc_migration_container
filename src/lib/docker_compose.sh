@@ -62,6 +62,12 @@ create_docker_network() {
     ERROR_MESSAGE=""
     return 0
   fi
+
+  if docker network inspect "$network_name" >/dev/null 2>&1; then
+    ERROR_MESSAGE=""
+    return 0
+  fi
+
   ERROR_MESSAGE="Docker-Netzwerk '$network_name' konnte nicht erstellt werden."
   return 1
 }
