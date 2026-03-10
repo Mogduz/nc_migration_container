@@ -72,7 +72,9 @@ migrate_stage1() {
                     if create_database "$env_file" "$compose_file" "db" "$MYSQL_ROOT_PASSWORD" "$MYSQL_DATABASE"; then
                         if grant_db_user_privileges "$env_file" "$compose_file" "db" "$MYSQL_ROOT_PASSWORD" "$MYSQL_USER" "$MYSQL_DATABASE"; then
                             if import_database_dump "$env_file" "$compose_file" "db" "$MYSQL_USER" "$MYSQL_PASSWORD" "$MYSQL_DATABASE" "$DB_DUMP_PATH"; then
-                                failed=false
+                                if stop_compose "$env_file" "$compose_file"; then
+                                    failed=false
+                                fi
                             fi
                         fi
                     fi
@@ -83,25 +85,8 @@ migrate_stage1() {
 
     if [ "$failed" = "true" ]; then
         abort_with_error "$ERROR_MESSAGE" "$ERROR_FUNCTION"
-    fi
-}
-
-migrate_stage1_testing() {
-
-    local env_file="$1"
-    local compose_file="$2"
-    local timeout="${3:-$timeout}"
-    local failed=true
-    if start_single_compose_container "$env_file" "$compose_file" "db"; then
-        if docker_wait_for_state "$env_file" "$compose_file" "db" "healthy" "$timeout" "$interval_seconds"; then
-            if configure_root_user "$env_file" "$compose_file" "db" "$MYSQL_ROOT_PASSWORD"; then
-                failed=false
-            fi
-        fi
-    fi
-
-    if [ "$failed" = "true" ]; then
-        abort_with_error "$ERROR_MESSAGE" "$ERROR_FUNCTION"
+    else
+        echo "Done"
     fi
 }
 
@@ -116,4 +101,4 @@ startup() {
 }
 
 startup "$1"
-migrate_stage1_testing "$env_file" "$compose_file"
+migrate_stage1 "$env_file" "$compose_file"
