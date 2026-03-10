@@ -135,13 +135,18 @@ import_database_dump() {
     import_mode="gzip"
   fi
 
+  if [ ! -f "$dump_file_path" ]; then
+    ERROR_MESSAGE="Dump-Datei '$dump_file_path' wurde auf dem Host nicht gefunden."
+    return 1
+  fi
+
   if [ "$import_mode" = "gzip" ]; then
-    if ! docker compose --env-file "$env_file" -f "$compose_file" exec -T -e MYSQL_PWD="$db_user_password" "$service_name" sh -lc 'gzip -dc "$1" | mysql -h127.0.0.1 -u"$2" "$3"' -- "$dump_file_path" "$db_user" "$database_name"; then
+    if ! gzip -dc "$dump_file_path" | docker compose --env-file "$env_file" -f "$compose_file" exec -T -e MYSQL_PWD="$db_user_password" "$service_name" mysql -h127.0.0.1 -u"$db_user" "$database_name"; then
       ERROR_MESSAGE="Gzip-Dump '$dump_file_path' konnte nicht in Datenbank '$database_name' fuer Service '$service_name' mit Compose-Datei '$compose_file' und Env-Datei '$env_file' importiert werden."
       return 1
     fi
   else
-    if ! docker compose --env-file "$env_file" -f "$compose_file" exec -T -e MYSQL_PWD="$db_user_password" "$service_name" sh -lc 'mysql -h127.0.0.1 -u"$2" "$3" < "$1"' -- "$dump_file_path" "$db_user" "$database_name"; then
+    if ! docker compose --env-file "$env_file" -f "$compose_file" exec -T -e MYSQL_PWD="$db_user_password" "$service_name" mysql -h127.0.0.1 -u"$db_user" "$database_name" < "$dump_file_path"; then
       ERROR_MESSAGE="SQL-Dump '$dump_file_path' konnte nicht in Datenbank '$database_name' fuer Service '$service_name' mit Compose-Datei '$compose_file' und Env-Datei '$env_file' importiert werden."
       return 1
     fi
