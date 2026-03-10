@@ -106,13 +106,64 @@ prepare_migration_stage1() {
     return 1
 }
 
+run_occ_stage1_commands() {
+    local env_file="$1"
+    local compose_file="$2"
+
+    if run_occ_cmd_in_container "$env_file" "$compose_file" "nextcloud" "maintenance:mode" "--on"; then
+        if run_occ_cmd_in_container "$env_file" "$compose_file" "nextcloud" "upgrade"; then
+            if run_occ_cmd_in_container "$env_file" "$compose_file" "nextcloud" "maintenance:mode" "--off"; then
+                if run_occ_cmd_in_container "$env_file" "$compose_file" "nextcloud" "db:add-missing-columns"; then
+                    if run_occ_cmd_in_container "$env_file" "$compose_file" "nextcloud" "db:add-missing-indices"; then
+                        if run_occ_cmd_in_container "$env_file" "$compose_file" "nextcloud" "db:add-missing-primary-keys"; then
+                            if run_occ_cmd_in_container "$env_file" "$compose_file" "nextcloud" "db:convert-filecache-bigint"; then
+                                return 0
+                            fi
+                        fi
+                    fi
+                fi
+            fi
+        fi
+    fi
+    return 1
+}
+
+run_occ_stage1_app_commands() {
+    local env_file="$1"
+    local compose_file="$2"
+    local app_id
+
+    for app_id in "calendar" "gallery" "brute_force_protection"; do
+        if ! run_occ_cmd_in_container "$env_file" "$compose_file" "nextcloud" "app:disable" "$app_id"; then
+            log_warn "occ app:disable $app_id fehlgeschlagen, fahre fort."
+        fi
+        if ! run_occ_cmd_in_container "$env_file" "$compose_file" "nextcloud" "app:remove" "$app_id"; then
+            log_warn "occ app:remove $app_id fehlgeschlagen, fahre fort."
+        fi
+    done
+
+    if ! run_occ_cmd_in_container "$env_file" "$compose_file" "nextcloud" "app:disable" "files_antivirus"; then
+        log_warn "occ app:disable files_antivirus fehlgeschlagen, fahre fort."
+    fi
+
+    if run_occ_cmd_in_container "$env_file" "$compose_file" "nextcloud" "app:install" "calendar"; then
+        if run_occ_cmd_in_container "$env_file" "$compose_file" "nextcloud" "app:enable" "calendar"; then
+            return 0
+        fi
+    fi
+
+    return 1
+}
+
 migrate_stage1() {
     local failed=true
     if preflight_migration_stage1; then 
         if prepare_database_stage1 "$env_file" "$compose_file"; then
             if prepare_migration_stage1 "$env_file" "$compose_file"; then
-                if run_occ_cmd_in_container "$env_file" "$compose_file" "nextcloud" "upgrade"; then
-                    failed=false
+                if run_occ_stage1_commands "$env_file" "$compose_file"; then
+                    if run_occ_stage1_app_commands "$env_file" "$compose_file"; then
+                        failed=false
+                    fi
                 fi
             fi
         fi
