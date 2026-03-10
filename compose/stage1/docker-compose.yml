@@ -20,7 +20,7 @@ services:
       retries: 12
       start_period: 30s
     networks:
-      - nextcloud_net
+      - app_net
 
   redis:
     image: redis:alpine
@@ -31,7 +31,7 @@ services:
         source: ${REDIS_MOUNT_PATH:-./redis}
         target: /data
     networks:
-      - nextcloud_net
+      - app_net
 
   nextcloud:
     image: nextcloud:25.0.13-apache
@@ -70,7 +70,7 @@ services:
       retries: 10
       start_period: 120s
     networks:
-      - nextcloud_net
+      - app_net
 
   cron:
     image: nextcloud:25.0.13-apache
@@ -90,8 +90,9 @@ services:
         target: ${NEXTCLOUD_FILES_CONTAINER_PATH:-/var/www/html/data}
     entrypoint: /cron.sh
     networks:
-      - nextcloud_net
+      - app_net
 
 networks:
-  nextcloud_net:
+  app_net:
+    name: ${DOCKER_NETWORK_NAME}
     driver: bridge
