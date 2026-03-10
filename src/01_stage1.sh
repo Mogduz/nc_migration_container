@@ -113,6 +113,7 @@ migrate_stage1() {
             if prepare_migration_stage1 "$env_file" "$compose_file"; then
                 if run_container_command_as_user "$env_file" "$compose_file" "nextcloud" "www-data" "php occ upgrade"; then
                     failed=false
+                fi
             fi
         fi
     fi
@@ -122,7 +123,6 @@ migrate_stage1() {
     else
         echo "Done"
     fi
-
 }
 
 startup() {
