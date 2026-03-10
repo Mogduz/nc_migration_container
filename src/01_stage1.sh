@@ -59,12 +59,10 @@ import_scripts() {
     . "$current_dir/src/lib/mysql.sh"
 }
 
-migrate_stage1() {
-
+prepare_database_stage1() {
     local env_file="$1"
     local compose_file="$2"
     local timeout="${3:-$timeout}"
-    local failed=true
     if start_single_compose_container "$env_file" "$compose_file" "db"; then
         if docker_wait_for_state "$env_file" "$compose_file" "db" "healthy" "$timeout" "$interval_seconds"; then
             if configure_root_user "$env_file" "$compose_file" "db" "$MYSQL_ROOT_PASSWORD"; then
@@ -73,7 +71,7 @@ migrate_stage1() {
                         if grant_db_user_privileges "$env_file" "$compose_file" "db" "$MYSQL_ROOT_PASSWORD" "$MYSQL_USER" "$MYSQL_DATABASE"; then
                             if import_database_dump "$env_file" "$compose_file" "db" "$MYSQL_USER" "$MYSQL_PASSWORD" "$MYSQL_DATABASE" "$DB_DUMP_PATH"; then
                                 if stop_compose "$env_file" "$compose_file"; then
-                                    failed=false
+                                    return 0
                                 fi
                             fi
                         fi
@@ -83,11 +81,38 @@ migrate_stage1() {
         fi
     fi
 
+    return 1
+}
+
+prepare_migration_stage1() {
+    local env_file="$1"
+    local compose_file="$2"
+    if create_docker_network "$DOCKER_NETWORK_NAME"; then
+        if start_compose "$env_file" "$compose_file"; then
+            if docker_wait_for_state "$env_file" "$compose_file" "db" "healthy" "$timeout" "$interval_seconds"; then
+                if docker_wait_for_state "$env_file" "$compose_file" "db" "healthy" "$timeout" "$interval_seconds"; then
+                    return 0
+                fi
+            fi
+        fi
+    fi
+    return 1
+}
+
+migrate_stage1() {
+    local failed=true
+    if prepare_database_stage1 "$env_file" "$compose_file"; then
+        if prepare_migration_stage1 "$env_file" "$compose_file"; then
+            failed=false
+        fi
+    fi
+
     if [ "$failed" = "true" ]; then
         abort_with_error "$ERROR_MESSAGE" "$ERROR_FUNCTION"
     else
         echo "Done"
     fi
+
 }
 
 startup() {
