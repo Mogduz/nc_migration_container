@@ -108,6 +108,30 @@ copy_file_to_container() {
   return 0
 }
 
+run_container_command_as_user() {
+  local env_file="$1"
+  local compose_file="$2"
+  local service_name="$3"
+  local run_user="$4"
+  shift 4
+
+  ERROR_FUNCTION="run_container_command_as_user"
+  ERROR_MESSAGE=""
+
+  if [ "$#" -eq 0 ]; then
+    ERROR_MESSAGE="Kein Befehl fuer Service '$service_name' angegeben."
+    return 1
+  fi
+
+  if docker compose --env-file "$env_file" -f "$compose_file" exec -T --user "$run_user" "$service_name" "$@"; then
+    ERROR_MESSAGE=""
+    return 0
+  fi
+
+  ERROR_MESSAGE="Befehl '$*' konnte als User '$run_user' im Service '$service_name' nicht ausgefuehrt werden."
+  return 1
+}
+
 docker_state_running() {
   local env_file="$1"
   local compose_file="$2"
